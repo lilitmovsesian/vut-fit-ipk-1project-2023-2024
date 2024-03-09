@@ -43,11 +43,11 @@ public class Client
 
     private HashSet<ushort> seenMessageIDs = new HashSet<ushort>();
     State state = State.Start;
-    bool TCPSendBYE = false;
-    bool TCPSendERR = false;
+    bool sendBYE = false;
+    bool sendERR = false;
     string? displayName = null;
-    bool TCPReceivedError = false;
-    bool TCPReceievedBye = false;
+    bool receivedERR = false;
+    bool receievedBYE = false;
     private ushort dynamicPort = 0;
     private readonly object socketLock = new object();
 
@@ -171,7 +171,7 @@ public class Client
 
                         else if (receivedMessage[0] == (byte)MessageType.ERR)
                         {
-                            PrintReceivedError(receivedMessage);
+                            PrintReceivedErrorOrMessage(receivedMessage);
                             ByeSendAndConfirm(UDPSocket, sendEndPoint, ref messageID, serverIpAddress);
                             state = State.End;
                         }
@@ -193,7 +193,27 @@ public class Client
                 Thread sendThread = new Thread(() => SendMessageUDP(UDPSocket, sendEndPoint, ref messageID, serverIpAddress));
                 sendThread.Start();
                 receiveThread.Start();
-
+                receiveThread.Join();
+                sendThread.Join();
+                if (sendBYE == true)
+                {
+                    ByeSendAndConfirm(UDPSocket, sendEndPoint, ref messageID, serverIpAddress);
+                    sendBYE = false;
+                    state = State.End;
+                    break;
+                }
+                if (sendERR == true)
+                {
+                    string messageContent = "Incoming message failed to be parsed.";
+                    byte[] errorMessage = ConstructMessage(MessageType.ERR, messageID, displayName, messageContent);
+                    if (!(SendAndConfirm(errorMessage, UDPSocket, sendEndPoint, ref messageID, serverIpAddress)))
+                    {
+                        Console.Error.WriteLine("ERR: ERR message wasn't received by the host.");
+                        Environment.Exit(1);
+                    }
+                    sendERR = false;
+                    state = State.Error;
+                }
             }
             if (state == State.Error)
             {
@@ -209,21 +229,137 @@ public class Client
         UDPSocket.Close();
     }
 
-    private void SendMessageUDP(Socket uDPSocket, IPEndPoint sendEndPoint, ref ushort messageID, IPAddress serverIpAddress)
+    private void SendMessageUDP(Socket UDPSocket, IPEndPoint sendEndPoint, ref ushort messageID, IPAddress serverIpAddress)
     {
-        lock (socketLock)
+        while ((!receivedERR && !receievedBYE && !sendBYE && !sendERR))
         {
+
+            //if (CheckKey())
+            //{
+                string? input = Console.ReadLine();
+                if (input != null)
+                {
+                    if (input.StartsWith("/join"))
+                    {
+                        string[] parts = input.Split(' ');
+                        string channelId = parts[1];
+                        byte[] joinMessage = ConstructMessage(MessageType.JOIN, messageID, channelId, displayName);
+                        //lock (socketLock)
+                        //{
+                            if (!(SendAndConfirm(joinMessage, UDPSocket, sendEndPoint, ref messageID, serverIpAddress)))
+                            {
+                                Console.Error.WriteLine("ERR: JOIN message wasn't received by the host.");
+                                //Environment.Exit(1);
+                                continue;
+                            }
+                        //}
+                    }
+                    else if (input.StartsWith("/rename"))
+                    {
+                        string[] parts = input.Split(' ');
+                        displayName = parts[1];
+
+                    }
+                    else if (input.StartsWith("/help"))
+                    {
+                        printUserHelp();
+                    }
+                    else if (input.StartsWith("/auth"))
+                    {
+                        state = State.Error;
+                        break;
+                    }
+                    else
+                    {
+                        if (input.Length == 0)
+                        {
+                            Console.Error.WriteLine("ERR: Enter non-empty input.");
+                            continue;
+                        }
+                        string messageContent = input;
+                        byte[] message = ConstructMessage(MessageType.MSG, messageID, displayName, messageContent);
+                        //lock (socketLock)
+                        //{
+                            if (!(SendAndConfirm(message, UDPSocket, sendEndPoint, ref messageID, serverIpAddress)))
+                            {
+                                Console.Error.WriteLine("ERR: MSG message wasn't received by the host.");
+                                //Environment.Exit(1);
+                                continue;
+                            }
+                        //}
+                    }
+                }
+                else
+                {
+                    ByeSendAndConfirm(UDPSocket, sendEndPoint, ref messageID, serverIpAddress);
+                    state = State.End;
+                    break;
+                }
+            //}
+            //else
+            //{
+             //   Thread.Sleep(100);
+            //}
         }
     }
 
-    private void ReceiveMessageUDP(Socket uDPSocket, IPEndPoint sendEndPoint, ref ushort messageID, IPAddress serverIpAddress)
+    private void ReceiveMessageUDP(Socket UDPSocket, IPEndPoint sendEndPoint, ref ushort messageID, IPAddress serverIpAddress)
     {
-        lock (socketLock)
+        while (true)
         {
+            if (state == State.End)
+            {
+                break;
+            }
+            byte[] receivedMessage = new byte[1024];
+            int receivedBytes = 0;
+            EndPoint receiveEndPoint = new IPEndPoint(IPAddress.Any, 0);
+            lock (socketLock)
+            {
+                receivedBytes = UDPSocket.ReceiveFrom(receivedMessage, 0, receivedMessage.Length, SocketFlags.None, ref receiveEndPoint);
+                SendConfirm(receivedMessage, UDPSocket, sendEndPoint);
+            }
+            ushort receivedMsgID = (ushort)((receivedMessage[1] << 8) | receivedMessage[2]);
+
+            if (!seenMessageIDs.Contains(receivedMsgID))
+            {
+                //adds the message ID to the set of seen IDs
+                seenMessageIDs.Add(receivedMsgID);
+                if (receivedBytes > 0)
+                {
+                    if (receivedMessage[0] == (byte)MessageType.REPLY)
+                    {
+                        PrintReceivedReply(receivedMessage, ref messageID);
+                    }
+                    else if (receivedMessage[0] == (byte)MessageType.MSG)
+                    {
+                        PrintReceivedErrorOrMessage(receivedMessage);
+                    }
+                    else if (receivedMessage[0] == (byte)MessageType.ERR)
+                    {
+                        sendBYE = true;
+                        receivedERR = true;
+                        PrintReceivedErrorOrMessage(receivedMessage);
+                        break;
+                    }
+                    else if (receivedMessage[0] == (byte)MessageType.BYE)
+                    {
+                        receievedBYE = true;
+                        state = State.End;
+                        break;
+                    }
+                    else
+                    {
+                        receivedERR = true;
+                        sendERR = true;
+                        break;
+                    }
+                }
+            }
         }
     }
 
-    //TODO ctrl c handling x2
+    //TODO ctrl c ctdl d handling x4
     //TODO UDP connection wireshark
 
 
@@ -258,17 +394,24 @@ public class Client
         return success;
     }
 
-    private void PrintReceivedError(byte[] errorMessage)
+    private void PrintReceivedErrorOrMessage(byte[] receivedMessage)
     {
         int disNameStartIndex = 3;
-        int disNameEndIndex = Array.IndexOf(errorMessage, (byte)0, disNameStartIndex);
-        string receivedDisplayName = Encoding.UTF8.GetString(errorMessage, disNameStartIndex, disNameEndIndex - disNameStartIndex);
+        int disNameEndIndex = Array.IndexOf(receivedMessage, (byte)0, disNameStartIndex);
+        string receivedDisplayName = Encoding.UTF8.GetString(receivedMessage, disNameStartIndex, disNameEndIndex - disNameStartIndex);
 
         int mesContentStartIndex = disNameEndIndex + 1;
-        int mesContentEndIndex = Array.IndexOf(errorMessage, (byte)0, mesContentStartIndex);
-        string messageContent = Encoding.UTF8.GetString(errorMessage, mesContentStartIndex, mesContentEndIndex - mesContentStartIndex);
+        int mesContentEndIndex = Array.IndexOf(receivedMessage, (byte)0, mesContentStartIndex);
+        string messageContent = Encoding.UTF8.GetString(receivedMessage, mesContentStartIndex, mesContentEndIndex - mesContentStartIndex);
 
-        Console.Error.WriteLine("ERR FROM " + receivedDisplayName + ": " + messageContent);
+        if (receivedMessage[0] == (byte)MessageType.ERR)
+        {
+            Console.Error.WriteLine("ERR FROM " + receivedDisplayName + ": " + messageContent);
+        }
+        else if (receivedMessage[0] == (byte)MessageType.MSG)
+        {
+            Console.WriteLine(receivedDisplayName + ": " + messageContent);
+        }
     }
 
     private void ByeSendAndConfirm(Socket UDPSocket, IPEndPoint sendEndPoint, ref ushort messageID, IPAddress serverIpAddress)
@@ -302,6 +445,7 @@ public class Client
         {
             Console.Error.WriteLine("ERR: AUTH message wasn't received by the host.");
             //Environment.Exit(1);
+            return false;
         }
         return true;
     }
@@ -397,7 +541,6 @@ public class Client
 
     public void ConnectTCP()
     {
-        //TcpClient client = null;
         Socket TCPSocket = null;
         NetworkStream stream = null;
         StreamWriter writer = null;
@@ -564,20 +707,20 @@ public class Client
                     sendThread.Join();
                     receiveThread.Join();
 
-                    if (TCPSendBYE == true)
+                    if (sendBYE == true)
                     {
                         writer.Write("BYE\r\n");
                         writer.Flush();
-                        TCPSendBYE = false;
+                        sendBYE = false;
                         state = State.End;
                         break;
                     }
-                    if (TCPSendERR == true)
+                    if (sendERR == true)
                     {
                         string message = string.Format("ERR FROM {0} IS Incoming message from {1}:{2} failed to be parsed.\r\n", displayName, serverIpAddress, serverPort);
                         writer.Write(message);
                         writer.Flush();
-                        TCPSendERR = false;
+                        sendERR = false;
                         state = State.Error;
                     }
                 }
@@ -657,8 +800,8 @@ public class Client
                 }
                 else if (receivedMessage.StartsWith("ERR"))
                 {
-                    TCPSendBYE = true;
-                    TCPReceivedError = true;
+                    sendBYE = true;
+                    receivedERR = true;
                     string[] parts = receivedMessage.Split(' ');
                     int isIndex = Array.IndexOf(parts, "IS");
                     string receivedDisplayName = parts[2];
@@ -672,14 +815,14 @@ public class Client
                 }
                 else if (receivedMessage.StartsWith("BYE"))
                 {
-                    TCPReceievedBye = true;
+                    receievedBYE = true;
                     state = State.End;
                     break;
                 }
                 else
                 {
-                    TCPReceivedError = true;
-                    TCPSendERR = true;
+                    receivedERR = true;
+                    sendERR = true;
                     break;
                 }
             }
@@ -698,9 +841,10 @@ public class Client
         }
         return true;
     }
+
     private void SendMessageTCP(StreamWriter writer)
     {
-        while ((!TCPReceivedError && !TCPReceievedBye && !TCPSendBYE && !TCPSendERR))
+        while ((!receivedERR && !receievedBYE && !sendBYE && !sendERR))
         {
 
             if (CheckKey())
