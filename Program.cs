@@ -567,7 +567,7 @@ public class Client
             reader = new StreamReader(stream);
 
             bool authSent = false;
-            SetupCtrlCHandler(writer);
+            //SetupCtrlCHandler(writer);
             while (true)
             {
                 
@@ -864,7 +864,7 @@ public class Client
         return true;
     }
 
-    private void SetupCtrlCHandler(StreamWriter writer)
+    /*private void SetupCtrlCHandler(StreamWriter writer)
     {
         Console.CancelKeyPress += (sender, e) =>
         {
@@ -873,7 +873,7 @@ public class Client
             writer.Flush();
             state = State.End;
         };
-    }
+    }*/
 
     private void SendMessageTCP(StreamWriter writer)
     {
@@ -1048,7 +1048,6 @@ Command Line Interface Arguments:
         {
             IPAddress[] address = Dns.GetHostAddresses(hostnameOrIpAddress);
             serverIpAddress = address[0];
-            Console.WriteLine(serverIpAddress);
         }
         
 

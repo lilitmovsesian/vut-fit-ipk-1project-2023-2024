@@ -1,7 +1,7 @@
 all: build clean
 
 build:
-	dotnet build -o ./ipk24chat-client
+  dotnet publish -c Release -r linux-x64 /p:PublishSingleFile=true /p:PublishTrimmed=true -o ./
 
 clean:
-	dotnet clean
+  dotnet clean
