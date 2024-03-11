@@ -11,6 +11,8 @@ using System.Reflection.PortableExecutable;
 using System.Threading.Channels;
 using System.Globalization;
 using static System.Net.WebRequestMethods;
+using System.ComponentModel.Design;
+using System.Runtime.Intrinsics.Arm;
 
 // dotnet run -s anton5.fit.vutbr.cz -t tcp
 // /auth xmovse00 919e1266-e441-4df6-9149-f46c12376bb6 igufet
@@ -45,7 +47,7 @@ public class Client
     State state = State.Start;
     bool sendBYE = false;
     bool sendERR = false;
-    string? displayName = null;
+    string displayName = "";
     bool receivedERR = false;
     bool receievedBYE = false;
     private ushort dynamicPort = 0;
@@ -92,7 +94,7 @@ public class Client
                         }
                         else if (input.StartsWith("/help"))
                         {
-                            printUserHelp();
+                            Program.PrintUserHelp();
                             continue;
                         }
                         else
@@ -128,7 +130,7 @@ public class Client
                             }
                             else if (input.StartsWith("/help"))
                             {
-                                printUserHelp();
+                                Program.PrintUserHelp();
                                 continue;
                             }
                             else
@@ -209,7 +211,6 @@ public class Client
                 {
                     ByeSendAndConfirm(UDPSocket, sendEndPoint, ref messageID, serverIpAddress);
                     sendBYE = false;
-                    Console.WriteLine("bye sent");
                     state = State.End;
                     break;
                 }
@@ -244,8 +245,6 @@ public class Client
     {
         while ((!receivedERR && !receievedBYE && !sendBYE && !sendERR))
         {
-            //if (CheckKey())
-            //{
             receiveEvent.Set();
             confirmReceivedEvent.Set();
             sendEvent.WaitOne();
@@ -273,7 +272,7 @@ public class Client
                 }
                 else if (input.StartsWith("/help"))
                 {
-                    printUserHelp();
+                    Program.PrintUserHelp();
                 }
                 else if (input.StartsWith("/auth"))
                 {
@@ -304,11 +303,6 @@ public class Client
                 state = State.End;
                 break;
             }
-            //}
-            //else
-            //{
-            //   Thread.Sleep(100);
-            //}
         }
     }
 
@@ -380,20 +374,6 @@ public class Client
             sendEvent.Set();
         }
     }
-
-
-    /*private void SetupCtrlCHandlerUDP()
-    {
-        Console.CancelKeyPress += (sender, e) =>
-        {
-            e.Cancel = true;
-            sendBYE = true;
-        };
-    }*/
-    //TODO ctrl c ctdl d handling x4
-    //TODO UDP connection wireshark
-
-
 
     private bool PrintReceivedReply(byte[] replyMessage, ref ushort messageID)
     {
@@ -572,10 +552,10 @@ public class Client
 
     public void ConnectTCP()
     {
-        Socket TCPSocket = null;
-        NetworkStream stream = null;
-        StreamWriter writer = null;
-        StreamReader reader = null;
+        Socket? TCPSocket = null;
+        NetworkStream? stream = null;
+        StreamWriter? writer = null;
+        StreamReader? reader = null;
         try
         {
             TCPSocket = new Socket(serverIpAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
@@ -587,12 +567,13 @@ public class Client
             reader = new StreamReader(stream);
 
             bool authSent = false;
+            SetupCtrlCHandler(writer);
             while (true)
             {
                 
                 if (state == State.Start)
                 {
-                    SetupCtrlCHandler(writer);
+                    
                     string? input = null;
                     input = Console.ReadLine();
 
@@ -618,7 +599,7 @@ public class Client
                             }
                             else if (input.StartsWith("/help"))
                             {
-                                printUserHelp();
+                                Program.PrintUserHelp();
                                 continue;
                             }
                             else
@@ -635,11 +616,10 @@ public class Client
                     }
                     else
                     {
-                        if (!byeSent)
-                        {
-                            byeSent = true;
-                            state = State.End;
-                        }
+                        writer.Write("BYE\r\n");
+                        writer.Flush();
+                        state = State.End;
+                       
                     }
                 }
                 if (state == State.Auth)
@@ -670,7 +650,7 @@ public class Client
                                 }
                                 else if (input.StartsWith("/help"))
                                 {
-                                    printUserHelp();
+                                    Program.PrintUserHelp();
                                     continue;
                                 }
                                 else
@@ -884,25 +864,19 @@ public class Client
         return true;
     }
 
-    private bool byeSent = false;
     private void SetupCtrlCHandler(StreamWriter writer)
     {
         Console.CancelKeyPress += (sender, e) =>
         {
             e.Cancel = true;
-            if (!byeSent) 
-            {
-                writer.Write("BYE\r\n");
-                writer.Flush();
-                byeSent = true;
-                state = State.End;
-            }
+            writer.Write("BYE\r\n");
+            writer.Flush();
+            state = State.End;
         };
     }
 
     private void SendMessageTCP(StreamWriter writer)
     {
-        SetupCtrlCHandler(writer);
         while ((!receivedERR && !receievedBYE && !sendBYE && !sendERR))
         {
             if (state == State.End)
@@ -931,7 +905,7 @@ public class Client
                     }
                     else if (input.StartsWith("/help"))
                     {
-                        printUserHelp();
+                        Program.PrintUserHelp();
                     }
                     else if (input.StartsWith("/auth"))
                     {
@@ -965,19 +939,7 @@ public class Client
             }
         }
     }
-    //TODO vychodit iz progy posle pustoy linii
-    //TODO posmotret v wireshark otpravlyaetsa li bye
-    //TODO PROBLEM S UKONCENIM
-    //READLINE REQUIRED
 
-    private void printUserHelp()
-    {
-        Console.WriteLine("Supported local commands:");
-        Console.WriteLine("/auth {Username} {Secret} {DisplayName} - Sends AUTH message with the data provided from the command to the server, locally sets the DisplayName");
-        Console.WriteLine("/join {ChannelID} - Sends JOIN message with channel name from the command to the server");
-        Console.WriteLine("/rename {DisplayName} - Locally changes the display name of the user");
-        Console.WriteLine("/help - Prints this message");
-    }
     private bool IsValidCommand(string input)
     {
         string[] parts = input.Split(' ');
@@ -986,22 +948,62 @@ public class Client
     }
 }
 
-//TODO normal structure of program
 class Program
 {
+    public static void PrintUserHelp()
+    {
+        Console.WriteLine(@"Supported local commands:
+    /auth {Username} {Secret} {DisplayName}   Sends AUTH message with the provided data to the server, 
+                                              sets the DisplayName.
+    
+    /join {ChannelID}                         Sends JOIN message with channel name from the command to the server.
+    
+    /rename {DisplayName}                     Locally changes the display name of the user.
+    
+    /help                                     Prints this message.");
+    }
+
     static void PrintHelp()
     {
-        //TODO print help
-        ;
+        Console.WriteLine(@"IPK Project 1: Client for a chat server using IPK24-CHAT protocol
+
+Description:
+    This program is designed to act as a client application for communicating with a remote server 
+    using the IPK24-CHAT protocol.The protocol has two variants, the first is based on the TCP protocol, 
+    while the second is built on the UDP protocol.
+
+Usage:
+    ipk24chat-client [-t <transport_protocol>] [-s <IP_or_hostname>] [-p <server_port>] [-d <UDPtimeout>] 
+    [-r <UDPretransmissions>]
+    
+    ipk24chat-client [-h]
+
+Command Line Interface Arguments:
+    -t <tcp | udp>      Transport protocol used for connection, 'tcp' or 'udp'. Must be specified by the user.
+    -s <IP or hostname> IP address or hostname of the server. Must be specified by the user.
+    -p <uint16>         Server port number. Dafault is 4567.
+    -d <uint16>         UDP confirmation timeout in milliseconds. Default is 250.
+    -r <uint8>          Maximum number of UDP retransmissions. Default is 3.
+    -h                  Prints this help message and exits.
+");
+        PrintUserHelp();
     }
 
     static void Main(string[] args)
     {
         string? transportProtocol = null;
-        string? hostnameStr = null;
+        string? hostnameOrIpAddress = null;
         ushort serverPort = 4567;
         ushort UDPConfTimeout = 250;
         byte maxUDPRetr = 3;
+
+        IPAddress? serverIpAddress = null;
+
+        if (args.Length == 1 && args[0] == "-h")
+        {
+            PrintHelp();
+            Environment.Exit(0);
+        }
 
         for (int i = 0; i < args.Length; i++)
         {
@@ -1014,7 +1016,7 @@ class Program
                 }
                 else if (args[i] == "-s")
                 {
-                    hostnameStr = args[i + 1];
+                    hostnameOrIpAddress = args[i + 1];
                 }
                 else if (args[i] == "-p" || args[i] == "--protocol")
                 {
@@ -1030,19 +1032,25 @@ class Program
                 }
                 else if (args[i] == "-h")
                 {
-                    PrintHelp();
+                    Console.Error.WriteLine("ERR: Invalid program parameters.");
+                    Environment.Exit(1);
                 }
             }
         }
 
-        if (transportProtocol == null || hostnameStr == null)
+        if (transportProtocol == null || hostnameOrIpAddress == null)
         {
-            Console.Error.WriteLine("ERR: Invalid program parameters, transport protocol and server IP address can't be null.");
+            Console.Error.WriteLine("ERR: Invalid program parameters, transport protocol and server IP address or hostname can't be null.");
             Environment.Exit(1);
         }
 
-        IPAddress[] address = Dns.GetHostAddresses(hostnameStr);
-        IPAddress serverIpAddress = address[0];
+        if (!IPAddress.TryParse(hostnameOrIpAddress, out serverIpAddress))
+        {
+            IPAddress[] address = Dns.GetHostAddresses(hostnameOrIpAddress);
+            serverIpAddress = address[0];
+            Console.WriteLine(serverIpAddress);
+        }
+        
 
         Client client = new Client(serverIpAddress, serverPort, UDPConfTimeout, maxUDPRetr);
 
