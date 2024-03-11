@@ -16,7 +16,6 @@ using static System.Net.WebRequestMethods;
 // /auth xmovse00 919e1266-e441-4df6-9149-f46c12376bb6 igufet
 public class Client
 {
-
     private readonly IPAddress serverIpAddress;
     private readonly ushort serverPort;
     private readonly ushort UDPConfTimeout;
@@ -52,6 +51,8 @@ public class Client
     private ushort dynamicPort = 0;
     private ManualResetEvent sendEvent = new ManualResetEvent(false);
     private ManualResetEvent receiveEvent = new ManualResetEvent(false);
+    private ManualResetEvent confirmReceivedEvent = new ManualResetEvent(false);
+    private ManualResetEvent endOfInputEvent = new ManualResetEvent(false);
 
     public Client(IPAddress serverIpAddress, ushort serverPort, ushort UDPConfTimeout, byte maxUDPRetr)
     {
@@ -87,7 +88,7 @@ public class Client
                             }
                             authSent = true;
                             state = State.Auth;
-                            //sendEndPoint.Port = dynamicPort;
+                            sendEndPoint.Port = dynamicPort;
                         }
                         else if (input.StartsWith("/help"))
                         {
@@ -193,6 +194,8 @@ public class Client
             {
                 sendEvent.Reset();
                 receiveEvent.Reset();
+                confirmReceivedEvent.Reset();
+                endOfInputEvent.Reset();
 
                 Thread receiveThread = new Thread(() => ReceiveMessageUDP(UDPSocket, sendEndPoint, ref messageID, serverIpAddress));
                 Thread sendThread = new Thread(() => SendMessageUDP(UDPSocket, sendEndPoint, ref messageID, serverIpAddress));
@@ -244,23 +247,22 @@ public class Client
             //if (CheckKey())
             //{
             receiveEvent.Set();
-            sendEvent.WaitOne(500);
+            confirmReceivedEvent.Set();
+            sendEvent.WaitOne();
 
             string? input = Console.ReadLine();
             if (input != null)
             {
+
                 if (input.StartsWith("/join"))
                 {
                     string[] parts = input.Split(' ');
                     string channelId = parts[1];
                     byte[] joinMessage = ConstructMessage(MessageType.JOIN, messageID, channelId, displayName);
-
+                    confirmReceivedEvent.Reset();
                     if (!(SendAndConfirm(joinMessage, UDPSocket, sendEndPoint, ref messageID, serverIpAddress)))
                     {
                         Console.Error.WriteLine("ERR: JOIN message wasn't received by the host.");
-                        //Environment.Exit(1);
-                        //receiveEvent.Set();
-                        //sendEvent.WaitOne();
                         continue;
                     }
                 }
@@ -276,8 +278,6 @@ public class Client
                 else if (input.StartsWith("/auth"))
                 {
                     state = State.Error;
-                    //receiveEvent.Set();
-                    //sendEvent.WaitOne();
                     break;
                 }
                 else
@@ -285,31 +285,23 @@ public class Client
                     if (input.Length == 0)
                     {
                         Console.Error.WriteLine("ERR: Enter non-empty input.");
-                        //receiveEvent.Set();
-                        //sendEvent.WaitOne();
                         continue;
                     }
                     string messageContent = input;
                     byte[] message = ConstructMessage(MessageType.MSG, messageID, displayName, messageContent);
+                    confirmReceivedEvent.Reset();
                     if (!(SendAndConfirm(message, UDPSocket, sendEndPoint, ref messageID, serverIpAddress)))
                     {
                         Console.Error.WriteLine("ERR: MSG message wasn't received by the host.");
-                        //Environment.Exit(1);
-                        //receiveEvent.Set();
-                        //sendEvent.WaitOne();
                         continue;
                     }
                 }
-                //receiveEvent.Set();
-
-                //sendEvent.WaitOne();
             }
             else
             {
+                endOfInputEvent.Set();
                 ByeSendAndConfirm(UDPSocket, sendEndPoint, ref messageID, serverIpAddress);
                 state = State.End;
-                //receiveEvent.Set();
-                //sendEvent.WaitOne();
                 break;
             }
             //}
@@ -324,12 +316,16 @@ public class Client
     {
         while (true)
         {
-            receiveEvent.WaitOne(500);
+            receiveEvent.WaitOne();
+            confirmReceivedEvent.WaitOne();
             if (state == State.End)
             {
                 break;
             }
-
+            if (endOfInputEvent.WaitOne(0))
+            {
+                break;
+            }
             byte[] receivedMessage = new byte[1024];
             int receivedBytes = 0;
             EndPoint receiveEndPoint = new IPEndPoint(IPAddress.Any, 0);
@@ -367,6 +363,10 @@ public class Client
                         state = State.End;
                         sendEvent.Set();
                         break;
+                    }
+                    else if (receivedMessage[0] == (byte)MessageType.CONFIRM)
+                    {
+                        ;
                     }
                     else
                     {
@@ -475,7 +475,6 @@ public class Client
         if (!(SendAndConfirm(authMessage, UDPSocket, sendEndPoint, ref messageID, serverIpAddress)))
         {
             Console.Error.WriteLine("ERR: AUTH message wasn't received by the host.");
-            //Environment.Exit(1);
             return false;
         }
         return true;
@@ -506,11 +505,12 @@ public class Client
                 ushort recMesID = (ushort)((confirmMessage[1] << 8) | confirmMessage[2]);
                 if (confirmBytes > 0 && confirmMessage[0] == (byte)MessageType.CONFIRM && recMesID == messageID)
                 {
-                    //if (message[0] == (byte)MessageType.AUTH)
-                    //{
-                    //    dynamicPort = (ushort)((IPEndPoint)receiveEndPoint).Port;
-                    //}
+                    if (message[0] == (byte)MessageType.AUTH)
+                    {
+                        dynamicPort = (ushort)((IPEndPoint)receiveEndPoint).Port;
+                    }
                     isConfirmed = true;
+                    confirmReceivedEvent.Set();
                     break;
                 }
             }
@@ -1042,7 +1042,6 @@ class Program
         }
 
         IPAddress[] address = Dns.GetHostAddresses(hostnameStr);
-        //IPAddress serverIpAddress = IPAddress.Parse(hostnameStr);
         IPAddress serverIpAddress = address[0];
 
         Client client = new Client(serverIpAddress, serverPort, UDPConfTimeout, maxUDPRetr);
