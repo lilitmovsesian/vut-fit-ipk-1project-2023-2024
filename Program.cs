@@ -249,59 +249,66 @@ public class Client
             confirmReceivedEvent.Set();
             sendEvent.WaitOne();
 
-            string? input = Console.ReadLine();
-            if (input != null)
+            if (CheckKey())
             {
+                string? input = Console.ReadLine();
+                if (input != null)
+                {
 
-                if (input.StartsWith("/join"))
-                {
-                    string[] parts = input.Split(' ');
-                    string channelId = parts[1];
-                    byte[] joinMessage = ConstructMessage(MessageType.JOIN, messageID, channelId, displayName);
-                    confirmReceivedEvent.Reset();
-                    if (!(SendAndConfirm(joinMessage, UDPSocket, sendEndPoint, ref messageID, serverIpAddress)))
+                    if (input.StartsWith("/join"))
                     {
-                        Console.Error.WriteLine("ERR: JOIN message wasn't received by the host.");
-                        continue;
+                        string[] parts = input.Split(' ');
+                        string channelId = parts[1];
+                        byte[] joinMessage = ConstructMessage(MessageType.JOIN, messageID, channelId, displayName);
+                        confirmReceivedEvent.Reset();
+                        if (!(SendAndConfirm(joinMessage, UDPSocket, sendEndPoint, ref messageID, serverIpAddress)))
+                        {
+                            Console.Error.WriteLine("ERR: JOIN message wasn't received by the host.");
+                            continue;
+                        }
                     }
-                }
-                else if (input.StartsWith("/rename"))
-                {
-                    string[] parts = input.Split(' ');
-                    displayName = parts[1];
-                }
-                else if (input.StartsWith("/help"))
-                {
-                    Program.PrintUserHelp();
-                }
-                else if (input.StartsWith("/auth"))
-                {
-                    state = State.Error;
-                    break;
+                    else if (input.StartsWith("/rename"))
+                    {
+                        string[] parts = input.Split(' ');
+                        displayName = parts[1];
+                    }
+                    else if (input.StartsWith("/help"))
+                    {
+                        Program.PrintUserHelp();
+                    }
+                    else if (input.StartsWith("/auth"))
+                    {
+                        state = State.Error;
+                        break;
+                    }
+                    else
+                    {
+                        if (input.Length == 0)
+                        {
+                            Console.Error.WriteLine("ERR: Enter non-empty input.");
+                            continue;
+                        }
+                        string messageContent = input;
+                        byte[] message = ConstructMessage(MessageType.MSG, messageID, displayName, messageContent);
+                        confirmReceivedEvent.Reset();
+                        if (!(SendAndConfirm(message, UDPSocket, sendEndPoint, ref messageID, serverIpAddress)))
+                        {
+                            Console.Error.WriteLine("ERR: MSG message wasn't received by the host.");
+                            continue;
+                        }
+                    }
                 }
                 else
                 {
-                    if (input.Length == 0)
-                    {
-                        Console.Error.WriteLine("ERR: Enter non-empty input.");
-                        continue;
-                    }
-                    string messageContent = input;
-                    byte[] message = ConstructMessage(MessageType.MSG, messageID, displayName, messageContent);
-                    confirmReceivedEvent.Reset();
-                    if (!(SendAndConfirm(message, UDPSocket, sendEndPoint, ref messageID, serverIpAddress)))
-                    {
-                        Console.Error.WriteLine("ERR: MSG message wasn't received by the host.");
-                        continue;
-                    }
+                    endOfInputEvent.Set();
+                    ByeSendAndConfirm(UDPSocket, sendEndPoint, ref messageID, serverIpAddress);
+                    state = State.End;
+                    break;
                 }
             }
             else
             {
-                endOfInputEvent.Set();
-                ByeSendAndConfirm(UDPSocket, sendEndPoint, ref messageID, serverIpAddress);
-                state = State.End;
-                break;
+                Thread.Sleep(100);
             }
         }
     }
