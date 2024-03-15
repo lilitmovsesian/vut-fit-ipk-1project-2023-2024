@@ -1,0 +1,1 @@
+/auth xmovse00 invalid-secret igufet

@@ -83,6 +83,11 @@ public class UDPClient
                         continue;
                     }
                 }
+                else
+                {
+                    ByeSendAndConfirm(UDPSocket, sendEndPoint, ref messageID, serverIpAddress);
+                    state = Helper.State.End;
+                }
             }
             if (state == Helper.State.Auth)
             {
@@ -118,6 +123,12 @@ public class UDPClient
                             Console.Error.WriteLine("ERR: Error sending a message in non-open state.");
                             continue;
                         }
+                    }
+                    else
+                    {
+                        ByeSendAndConfirm(UDPSocket, sendEndPoint, ref messageID, serverIpAddress);
+                        state = Helper.State.End;
+                        break;
                     }
                 }
                 byte[] receivedMessage = new byte[1024];

@@ -152,6 +152,13 @@ public class TCPClient
                                 continue;
                             }
                         }
+                        else
+                        {
+                            writer.Write("BYE\r\n");
+                            writer.Flush();
+                            state = Helper.State.End;
+                            break;
+                        }
                     }
                     string? receivedMessage = reader.ReadLine();
                     if (!string.IsNullOrEmpty(receivedMessage))
