@@ -361,7 +361,7 @@ public class Client
                     {
                         sendBYE = true;
                         receivedERR = true;
-                        PrintReceivedErrorOrMessage(receivedMessage)
+                        PrintReceivedErrorOrMessage(receivedMessage);
                         break;
                     }
                     else if (receivedMessage[0] == (byte)MessageType.BYE)
