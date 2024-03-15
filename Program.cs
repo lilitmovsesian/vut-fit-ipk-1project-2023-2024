@@ -50,7 +50,6 @@ public class Client
     string displayName = "";
     bool receivedERR = false;
     bool receievedBYE = false;
-    private ushort dynamicPort = 0;
     private ManualResetEvent sendEvent = new ManualResetEvent(false);
     private ManualResetEvent receiveEvent = new ManualResetEvent(false);
     private ManualResetEvent confirmReceivedEvent = new ManualResetEvent(false);
@@ -90,7 +89,6 @@ public class Client
                             }
                             authSent = true;
                             state = State.Auth;
-                            sendEndPoint.Port = dynamicPort;
                         }
                         else if (input.StartsWith("/help"))
                         {
@@ -149,8 +147,9 @@ public class Client
                 byte[] receivedMessage = new byte[1024];
                 EndPoint receiveEndPoint = new IPEndPoint(IPAddress.Any, 0);
                 int receivedBytes = UDPSocket.ReceiveFrom(receivedMessage, 0, receivedMessage.Length, SocketFlags.None, ref receiveEndPoint);
-
+                sendEndPoint.Port = (ushort)((IPEndPoint)receiveEndPoint).Port;
                 SendConfirm(receivedMessage, UDPSocket, sendEndPoint);
+
                 if (receivedBytes > 0)
                 {
                     ushort receivedMsgID = (ushort)((receivedMessage[1] << 8) | receivedMessage[2]);
@@ -492,10 +491,6 @@ public class Client
                 ushort recMesID = (ushort)((confirmMessage[1] << 8) | confirmMessage[2]);
                 if (confirmBytes > 0 && confirmMessage[0] == (byte)MessageType.CONFIRM && recMesID == messageID)
                 {
-                    if (message[0] == (byte)MessageType.AUTH)
-                    {
-                        dynamicPort = (ushort)((IPEndPoint)receiveEndPoint).Port;
-                    }
                     isConfirmed = true;
                     confirmReceivedEvent.Set();
                     break;
