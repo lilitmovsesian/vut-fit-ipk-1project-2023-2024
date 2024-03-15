@@ -54,6 +54,7 @@ public class Client
     private ManualResetEvent receiveEvent = new ManualResetEvent(false);
     private ManualResetEvent confirmReceivedEvent = new ManualResetEvent(false);
     private ManualResetEvent endOfInputEvent = new ManualResetEvent(false);
+    private ManualResetEvent receivedReplyEvent = new ManualResetEvent(false);
 
     public Client(IPAddress serverIpAddress, ushort serverPort, ushort UDPConfTimeout, byte maxUDPRetr)
     {
@@ -197,6 +198,7 @@ public class Client
                 receiveEvent.Reset();
                 confirmReceivedEvent.Reset();
                 endOfInputEvent.Reset();
+                receivedReplyEvent.Reset();
 
                 Thread receiveThread = new Thread(() => ReceiveMessageUDP(UDPSocket, sendEndPoint, ref messageID, serverIpAddress));
                 Thread sendThread = new Thread(() => SendMessageUDP(UDPSocket, sendEndPoint, ref messageID, serverIpAddress));
@@ -265,6 +267,7 @@ public class Client
                             Console.Error.WriteLine("ERR: JOIN message wasn't received by the host.");
                             continue;
                         }
+                        receivedReplyEvent.WaitOne();
                     }
                     else if (input.StartsWith("/rename"))
                     {
@@ -344,6 +347,7 @@ public class Client
                     if (receivedMessage[0] == (byte)MessageType.REPLY)
                     {
                         PrintReceivedReply(receivedMessage, ref messageID);
+                        receivedReplyEvent.Set();
                     }
                     else if (receivedMessage[0] == (byte)MessageType.MSG)
                     {
@@ -723,6 +727,8 @@ public class Client
                 }
                 if (state == State.Open)
                 {
+                    receivedReplyEvent.Reset();
+
                     Thread sendThread = new Thread(() => SendMessageTCP(writer));
                     Thread receiveThread = new Thread(() => ReceiveMessageTCP(reader));
                     sendThread.Start();
@@ -808,6 +814,7 @@ public class Client
                     {
                         Console.Error.WriteLine("Failure: " + reason);
                     }
+                    receivedReplyEvent.Set();
                 }
                 else if (receivedMessage.StartsWith("MSG"))
                 {
@@ -898,6 +905,7 @@ public class Client
                         string message = string.Format("JOIN {0} AS {1}\r\n", channelId.Trim(), displayName.Trim());
                         writer.Write(message);
                         writer.Flush();
+                        receivedReplyEvent.WaitOne();
                     }
                     else if (input.StartsWith("/rename"))
                     {
