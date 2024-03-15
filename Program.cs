@@ -302,8 +302,8 @@ public class Client
                 }
                 else
                 {
-                    endOfInputEvent.Set();
                     ByeSendAndConfirm(UDPSocket, sendEndPoint, ref messageID, serverIpAddress);
+                    endOfInputEvent.Set();
                     state = State.End;
                     break;
                 }
@@ -728,6 +728,7 @@ public class Client
                 if (state == State.Open)
                 {
                     receivedReplyEvent.Reset();
+                    endOfInputEvent.Reset();
 
                     Thread sendThread = new Thread(() => SendMessageTCP(writer));
                     Thread receiveThread = new Thread(() => ReceiveMessageTCP(reader));
@@ -758,6 +759,7 @@ public class Client
                 {
                     writer.Write("BYE\r\n");
                     writer.Flush();
+                    endOfInputEvent.Set();
                     state = State.End;
                     break;
                 }
@@ -790,6 +792,10 @@ public class Client
         while (true)
         {
             if (state == State.End)
+            {
+                break;
+            }
+            if (endOfInputEvent.WaitOne(0))
             {
                 break;
             }
