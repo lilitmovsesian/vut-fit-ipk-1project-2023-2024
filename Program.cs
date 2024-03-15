@@ -267,7 +267,11 @@ public class Client
                             Console.Error.WriteLine("ERR: JOIN message wasn't received by the host.");
                             continue;
                         }
-                        receivedReplyEvent.WaitOne();
+                        if (!receivedReplyEvent.WaitOne(5000))
+                        {
+                            Console.Error.WriteLine("ERR: Timeout waiting for JOIN reply.");
+                            continue;
+                        }
                     }
                     else if (input.StartsWith("/rename"))
                     {
@@ -911,7 +915,11 @@ public class Client
                         string message = string.Format("JOIN {0} AS {1}\r\n", channelId.Trim(), displayName.Trim());
                         writer.Write(message);
                         writer.Flush();
-                        receivedReplyEvent.WaitOne();
+                        if (!receivedReplyEvent.WaitOne(5000))
+                        {
+                            Console.Error.WriteLine("ERR: Timeout waiting for JOIN reply.");
+                            continue;
+                        }
                     }
                     else if (input.StartsWith("/rename"))
                     {
