@@ -361,15 +361,13 @@ public class Client
                     {
                         sendBYE = true;
                         receivedERR = true;
-                        PrintReceivedErrorOrMessage(receivedMessage);
-                        sendEvent.Set();
+                        PrintReceivedErrorOrMessage(receivedMessage)
                         break;
                     }
                     else if (receivedMessage[0] == (byte)MessageType.BYE)
                     {
                         receievedBYE = true;
                         state = State.End;
-                        sendEvent.Set();
                         break;
                     }
                     else if (receivedMessage[0] == (byte)MessageType.CONFIRM)
@@ -380,7 +378,6 @@ public class Client
                     {
                         receivedERR = true;
                         sendERR = true;
-                        sendEvent.Set();
                         break;
                     }
                 }
@@ -731,6 +728,8 @@ public class Client
                 }
                 if (state == State.Open)
                 {
+                    sendEvent.Reset();
+                    receiveEvent.Reset();
                     receivedReplyEvent.Reset();
                     endOfInputEvent.Reset();
 
@@ -795,6 +794,7 @@ public class Client
     {
         while (true)
         {
+            receiveEvent.WaitOne();
             if (state == State.End)
             {
                 break;
@@ -867,6 +867,7 @@ public class Client
                     break;
                 }
             }
+            sendEvent.Set();
         }
     }
 
@@ -898,6 +899,8 @@ public class Client
     {
         while ((!receivedERR && !receievedBYE && !sendBYE && !sendERR))
         {
+            receiveEvent.Set();
+            sendEvent.WaitOne();
             if (state == State.End)
             {
                 break;
