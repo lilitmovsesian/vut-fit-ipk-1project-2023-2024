@@ -373,6 +373,7 @@ public class TCPClient
                         string message = string.Format("JOIN {0} AS {1}\r\n", channelId.Trim(), displayName.Trim());
                         writer.Write(message);
                         writer.Flush();
+                        Thread.Sleep(300);
                         if (!receivedReplyEvent.WaitOne(5000))
                         {
                             Console.Error.WriteLine("ERR: Timeout waiting for REPLY to JOIN message.");
@@ -405,12 +406,14 @@ public class TCPClient
                         string message = string.Format("MSG FROM {0} IS {1}\r\n", displayName.Trim(), messageContent);
                         writer.Write(message);
                         writer.Flush();
+                        Thread.Sleep(300);
                     }
                 }
                 else
                 {
                     writer.Write("BYE\r\n");
                     writer.Flush();
+                    Thread.Sleep(300);
                     state = Helper.State.End;
                     break;
                 }

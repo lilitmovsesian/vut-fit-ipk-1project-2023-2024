@@ -245,6 +245,7 @@ public class UDPClient
                             Console.Error.WriteLine("ERR: JOIN message wasn't received by the host.");
                             continue;
                         }
+                        Thread.Sleep(300);
                         if (!receivedReplyEvent.WaitOne(5000))
                         {
                             Console.Error.WriteLine("ERR: Timeout waiting for REPLY to JOIN message.");
@@ -280,6 +281,7 @@ public class UDPClient
                             Console.Error.WriteLine("ERR: MSG message wasn't received by the host.");
                             continue;
                         }
+                        Thread.Sleep(300);
                     }
                 }
                 else
@@ -340,14 +342,12 @@ public class UDPClient
                         sendBYE = true;
                         receivedERR = true;
                         helper.PrintReceivedErrorOrMessage(receivedMessage);
-                        sendEvent.Set();
                         break;
                     }
                     else if (receivedMessage[0] == (byte)Helper.MessageType.BYE)
                     {
                         receievedBYE = true;
                         state = Helper.State.End;
-                        sendEvent.Set();
                         break;
                     }
                     else if (receivedMessage[0] == (byte)Helper.MessageType.CONFIRM)
@@ -358,7 +358,6 @@ public class UDPClient
                     {
                         receivedERR = true;
                         sendERR = true;
-                        sendEvent.Set();
                         break;
                     }
                 }
