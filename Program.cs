@@ -269,7 +269,7 @@ public class Client
                         }
                         if (!receivedReplyEvent.WaitOne(5000))
                         {
-                            Console.Error.WriteLine("ERR: Timeout waiting for JOIN reply.");
+                            Console.Error.WriteLine("ERR: Timeout waiting for REPLY to JOIN message.");
                             continue;
                         }
                     }
@@ -306,8 +306,8 @@ public class Client
                 }
                 else
                 {
-                    ByeSendAndConfirm(UDPSocket, sendEndPoint, ref messageID, serverIpAddress);
                     endOfInputEvent.Set();
+                    ByeSendAndConfirm(UDPSocket, sendEndPoint, ref messageID, serverIpAddress);
                     state = State.End;
                     break;
                 }
@@ -917,7 +917,7 @@ public class Client
                         writer.Flush();
                         if (!receivedReplyEvent.WaitOne(5000))
                         {
-                            Console.Error.WriteLine("ERR: Timeout waiting for JOIN reply.");
+                            Console.Error.WriteLine("ERR: Timeout waiting for REPLY to JOIN message.");
                             continue;
                         }
                     }
