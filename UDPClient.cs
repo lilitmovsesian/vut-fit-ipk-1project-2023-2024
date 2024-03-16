@@ -255,6 +255,7 @@ public class UDPClient
             sendEvent.WaitOne();
             if (state == Helper.State.End || receivedERR || receievedBYE || sendBYE || sendERR)
             {
+                receiveEvent.Set();
                 break;
             }
             if (helper.CheckKey())
@@ -293,6 +294,7 @@ public class UDPClient
                     else if (input.StartsWith("/auth"))
                     {
                         state = Helper.State.Error;
+                        receiveEvent.Set();
                         break;
                     }
                     else
@@ -318,6 +320,7 @@ public class UDPClient
                     endOfInputEvent.Set();
                     ByeSendAndConfirm(UDPSocket, sendEndPoint, ref messageID, serverIpAddress);
                     state = Helper.State.End;
+                    receiveEvent.Set();
                     break;
                 }
             }
@@ -336,10 +339,7 @@ public class UDPClient
             confirmReceivedEvent.WaitOne();
             if (state == Helper.State.End || state == Helper.State.Error || endOfInputEvent.WaitOne(0))
             {
-                break;
-            }
-            if (endOfInputEvent.WaitOne(0))
-            {
+                sendEvent.Set();
                 break;
             }
             byte[] receivedMessage = new byte[1024];
@@ -371,12 +371,14 @@ public class UDPClient
                         sendBYE = true;
                         receivedERR = true;
                         helper.PrintReceivedErrorOrMessage(receivedMessage);
+                        sendEvent.Set();
                         break;
                     }
                     else if (receivedMessage[0] == (byte)Helper.MessageType.BYE)
                     {
                         receievedBYE = true;
                         state = Helper.State.End;
+                        sendEvent.Set();
                         break;
                     }
                     else if (receivedMessage[0] == (byte)Helper.MessageType.CONFIRM)
@@ -387,6 +389,7 @@ public class UDPClient
                     {
                         receivedERR = true;
                         sendERR = true;
+                        sendEvent.Set();
                         break;
                     }
                 }
