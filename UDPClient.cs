@@ -321,7 +321,7 @@ public class UDPClient
                     ByeSendAndConfirm(UDPSocket, sendEndPoint, ref messageID, serverIpAddress);
                     state = Helper.State.End;
                     //break;
-                    Environmental.Exit(0);
+                    Environment.Exit(0);
                 }
             }
             else
