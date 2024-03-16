@@ -282,7 +282,7 @@ public class TCPClient
         while (true)
         {
             receiveEvent.WaitOne();
-            iif(state == Helper.State.End || state == Helper.State.Error || endOfInputEvent.WaitOne(0))
+            if(state == Helper.State.End || state == Helper.State.Error || endOfInputEvent.WaitOne(0))
             {
                 sendEvent.Set();
                 break;
