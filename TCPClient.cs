@@ -54,7 +54,7 @@ public class TCPClient
             reader = new StreamReader(stream);
 
             bool authSent = false;
-            //SetupCtrlCHandler(writer);
+            helper.SetupCtrlCHandlerTCP(writer);
             while (true)
             {
 
