@@ -248,14 +248,13 @@ public class UDPClient
 
     private void SendMessageUDP(Socket UDPSocket, IPEndPoint sendEndPoint, ref ushort messageID, IPAddress serverIpAddress)
     {
-        while (!receivedERR && !receievedBYE && !sendBYE && !sendERR && !ctrlCEvent.WaitOne(0) && !ctrlCEvent.WaitOne(0))
+        while (!ctrlCEvent.WaitOne(0))
         {
             receiveEvent.Set();
             confirmReceivedEvent.Set();
             sendEvent.WaitOne();
-            if (state == Helper.State.End || state == Helper.State.Error || endOfInputEvent.WaitOne(0))
+            if (state == Helper.State.End || receivedERR || receievedBYE || sendBYE || sendERR)
             {
-                receiveEvent.Set();
                 break;
             }
             if (helper.CheckKey())
@@ -294,7 +293,6 @@ public class UDPClient
                     else if (input.StartsWith("/auth"))
                     {
                         state = Helper.State.Error;
-                        receiveEvent.Set();
                         break;
                     }
                     else
@@ -320,8 +318,7 @@ public class UDPClient
                     endOfInputEvent.Set();
                     ByeSendAndConfirm(UDPSocket, sendEndPoint, ref messageID, serverIpAddress);
                     state = Helper.State.End;
-                    //break;
-                    Environment.Exit(0);
+                    break;
                 }
             }
             else
@@ -333,18 +330,16 @@ public class UDPClient
 
     private void ReceiveMessageUDP(Socket UDPSocket, IPEndPoint sendEndPoint, ref ushort messageID, IPAddress serverIpAddress)
     {
-        while (true)
+        while (!ctrlCEvent.WaitOne(0))
         {
             receiveEvent.WaitOne();
             confirmReceivedEvent.WaitOne();
-            if (state == Helper.State.End || state == Helper.State.Error)
+            if (state == Helper.State.End || state == Helper.State.Error || endOfInputEvent.WaitOne(0))
             {
-                sendEvent.Set();
                 break;
             }
             if (endOfInputEvent.WaitOne(0))
             {
-                sendEvent.Set();
                 break;
             }
             byte[] receivedMessage = new byte[1024];
@@ -376,14 +371,12 @@ public class UDPClient
                         sendBYE = true;
                         receivedERR = true;
                         helper.PrintReceivedErrorOrMessage(receivedMessage);
-                        sendEvent.Set();
                         break;
                     }
                     else if (receivedMessage[0] == (byte)Helper.MessageType.BYE)
                     {
                         receievedBYE = true;
                         state = Helper.State.End;
-                        sendEvent.Set();
                         break;
                     }
                     else if (receivedMessage[0] == (byte)Helper.MessageType.CONFIRM)
@@ -394,7 +387,6 @@ public class UDPClient
                     {
                         receivedERR = true;
                         sendERR = true;
-                        sendEvent.Set();
                         break;
                     }
                 }
