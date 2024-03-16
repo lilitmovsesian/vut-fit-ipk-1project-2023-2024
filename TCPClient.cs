@@ -282,12 +282,9 @@ public class TCPClient
         while (true)
         {
             receiveEvent.WaitOne();
-            if (state == Helper.State.End || state == Helper.State.Error)
+            iif(state == Helper.State.End || state == Helper.State.Error || endOfInputEvent.WaitOne(0))
             {
-                break;
-            }
-            if (endOfInputEvent.WaitOne(0))
-            {
+                sendEvent.Set();
                 break;
             }
             string? receivedMessage = reader.ReadLine();
@@ -339,18 +336,21 @@ public class TCPClient
                         messageContent = string.Join(" ", parts, isIndex + 1, parts.Length - isIndex - 1);
                     }
                     Console.Error.WriteLine("ERR FROM " + receivedDisplayName + ": " + messageContent);
+                    sendEvent.Set();
                     break;
                 }
                 else if (receivedMessage.StartsWith("BYE"))
                 {
                     receievedBYE = true;
                     state = Helper.State.End;
+                    sendEvent.Set();
                     break;
                 }
                 else
                 {
                     receivedERR = true;
                     sendERR = true;
+                    sendEvent.Set();
                     break;
                 }
             }
@@ -365,6 +365,7 @@ public class TCPClient
             sendEvent.WaitOne();
             if (state == Helper.State.End)
             {
+                receiveEvent.Set();
                 break;
             }
             if (helper.CheckKey())
@@ -400,6 +401,7 @@ public class TCPClient
                     else if (input.StartsWith("/auth"))
                     {
                         state = Helper.State.Error;
+                        receiveEvent.Set();
                         break;
                     }
                     else
@@ -420,9 +422,12 @@ public class TCPClient
                 {
                     writer.Write("BYE\r\n");
                     writer.Flush();
-                    Thread.Sleep(300);
                     state = Helper.State.End;
-                    break;
+                    endOfInputEvent.Set();
+                    receiveEvent.Set();
+                    //Thread.Sleep(300);                   	
+                    //break;
+                    Environment.Exit(0);
                 }
             }
             else

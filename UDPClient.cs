@@ -29,6 +29,9 @@ public class UDPClient
     private ManualResetEvent endOfInputEvent = new ManualResetEvent(false);
     private ManualResetEvent receivedReplyEvent = new ManualResetEvent(false);
 
+    private ManualResetEvent ctrlCEvent = new ManualResetEvent(false);
+    private ManualResetEvent threadsTerminatedEvent = new ManualResetEvent(false);
+
     Helper helper = new Helper();
 
     public UDPClient(IPAddress serverIpAddress, ushort serverPort, ushort UDPConfTimeout, byte maxUDPRetr)
@@ -46,6 +49,20 @@ public class UDPClient
 
         bool authSent = false;
         ushort messageID = 0;
+
+
+        ctrlCEvent.Reset();
+        threadsTerminatedEvent.Reset();
+        Console.CancelKeyPress += (sender, e) =>
+        {
+            e.Cancel = true;
+            ctrlCEvent.Set();
+            ByeSendAndConfirm(UDPSocket, sendEndPoint, ref messageID, serverIpAddress);
+            threadsTerminatedEvent.WaitOne(1000);
+            Environment.Exit(0);
+        };
+
+
         while (true)
         {
 
@@ -193,6 +210,7 @@ public class UDPClient
 
                 receiveThread.Join();
                 sendThread.Join();
+                threadsTerminatedEvent.Set();
 
                 if (sendBYE == true)
                 {
@@ -230,13 +248,14 @@ public class UDPClient
 
     private void SendMessageUDP(Socket UDPSocket, IPEndPoint sendEndPoint, ref ushort messageID, IPAddress serverIpAddress)
     {
-        while ((!receivedERR && !receievedBYE && !sendBYE && !sendERR))
+        while (!receivedERR && !receievedBYE && !sendBYE && !sendERR && !ctrlCEvent.WaitOne(0) && !ctrlCEvent.WaitOne(0))
         {
             receiveEvent.Set();
             confirmReceivedEvent.Set();
             sendEvent.WaitOne();
-            if (state == Helper.State.End)
+            if (state == Helper.State.End || state == Helper.State.Error || endOfInputEvent.WaitOne(0))
             {
+                receiveEvent.Set();
                 break;
             }
             if (helper.CheckKey())
@@ -275,6 +294,7 @@ public class UDPClient
                     else if (input.StartsWith("/auth"))
                     {
                         state = Helper.State.Error;
+                        receiveEvent.Set();
                         break;
                     }
                     else
@@ -300,7 +320,8 @@ public class UDPClient
                     endOfInputEvent.Set();
                     ByeSendAndConfirm(UDPSocket, sendEndPoint, ref messageID, serverIpAddress);
                     state = Helper.State.End;
-                    break;
+                    //break;
+                    Environmental.Exit(0);
                 }
             }
             else
@@ -318,10 +339,12 @@ public class UDPClient
             confirmReceivedEvent.WaitOne();
             if (state == Helper.State.End || state == Helper.State.Error)
             {
+                sendEvent.Set();
                 break;
             }
             if (endOfInputEvent.WaitOne(0))
             {
+                sendEvent.Set();
                 break;
             }
             byte[] receivedMessage = new byte[1024];
@@ -353,12 +376,14 @@ public class UDPClient
                         sendBYE = true;
                         receivedERR = true;
                         helper.PrintReceivedErrorOrMessage(receivedMessage);
+                        sendEvent.Set();
                         break;
                     }
                     else if (receivedMessage[0] == (byte)Helper.MessageType.BYE)
                     {
                         receievedBYE = true;
                         state = Helper.State.End;
+                        sendEvent.Set();
                         break;
                     }
                     else if (receivedMessage[0] == (byte)Helper.MessageType.CONFIRM)
@@ -369,6 +394,7 @@ public class UDPClient
                     {
                         receivedERR = true;
                         sendERR = true;
+                        sendEvent.Set();
                         break;
                     }
                 }
