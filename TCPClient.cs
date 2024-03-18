@@ -91,7 +91,7 @@ public class TCPClient
                             }
                             else
                             {
-                                Console.Error.WriteLine("ERR: /auth command is required. Use: /auth {Username} {Secret} {DisplayName}.");
+                                Console.Error.WriteLine("ERR: /auth command is required. Use /auth {Username} {Secret} {DisplayName}.");
                                 continue;
                             }
                         }
@@ -142,7 +142,7 @@ public class TCPClient
                                 }
                                 else
                                 {
-                                    Console.Error.WriteLine("ERR: /auth command is required. Use: /auth {Username} {Secret} {DisplayName}.");
+                                    Console.Error.WriteLine("ERR: /auth command is required. Use /auth {Username} {Secret} {DisplayName}.");
                                     continue;
                                 }
                             }
@@ -377,6 +377,11 @@ public class TCPClient
                     if (input.StartsWith("/join"))
                     {
                         string[] parts = input.Split(' ');
+                        if (parts.Length != 2)
+                        {
+                            Console.Error.WriteLine("ERR: Use join {ChannelID}.");
+                            continue;
+                        }
                         string channelId = parts[1];
                         string message = string.Format("JOIN {0} AS {1}\r\n", channelId.Trim(), displayName.Trim());
                         writer.Write(message);
@@ -391,6 +396,11 @@ public class TCPClient
                     else if (input.StartsWith("/rename"))
                     {
                         string[] parts = input.Split(' ');
+                        if (parts.Length != 2)
+                        {
+                            Console.Error.WriteLine("ERR: Use /rename {DisplayName}.");
+                            continue;
+                        }
                         displayName = parts[1];
 
                     }
@@ -400,9 +410,8 @@ public class TCPClient
                     }
                     else if (input.StartsWith("/auth"))
                     {
-                        state = Helper.State.Error;
-                        receiveEvent.Set();
-                        break;
+                        Console.Error.WriteLine("ERR: User is already authorized.");
+                        continue;
                     }
                     else
                     {
