@@ -249,7 +249,6 @@ public class TCPClient
                 {
                     writer.Write("BYE\r\n");
                     writer.Flush();
-                    endOfInputEvent.Set();
                     state = Helper.State.End;
                     break;
                 }
@@ -359,7 +358,7 @@ public class TCPClient
     }
     private void SendMessageTCP(StreamWriter writer)
     {
-        while ((!receivedERR && !receievedBYE && !sendBYE && !sendERR))
+        while (!receivedERR && !receievedBYE && !sendBYE && !sendERR)
         {
             receiveEvent.Set();
             sendEvent.WaitOne();
