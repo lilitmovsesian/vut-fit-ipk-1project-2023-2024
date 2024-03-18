@@ -425,7 +425,7 @@ public class TCPClient
                     state = Helper.State.End;
                     endOfInputEvent.Set();
                     receiveEvent.Set();
-                    //Thread.Sleep(300);                   	
+                    Thread.Sleep(300);                   	
                     //break;
                     Environment.Exit(0);
                 }
