@@ -52,7 +52,9 @@ public class TCPClient
 
             writer = new StreamWriter(stream);
             reader = new StreamReader(stream);
-
+            /*I set receive timeout in tcp but don't use it in udp to check if the
+            connection to the server is OK, in udp the confirm messages are responsible for this*/
+            TCPSocket.ReceiveTimeout = 2500;
             bool authSent = false;
             helper.SetupCtrlCHandlerTCP(writer);
             while (true)
@@ -219,6 +221,7 @@ public class TCPClient
                     receiveEvent.Reset();
                     receivedReplyEvent.Reset();
                     endOfInputEvent.Reset();
+                    TCPSocket.ReceiveTimeout = 250;
 
                     Thread sendThread = new Thread(() => SendMessageTCP(writer));
                     Thread receiveThread = new Thread(() => ReceiveMessageTCP(reader));
@@ -278,15 +281,20 @@ public class TCPClient
 
     private void ReceiveMessageTCP(StreamReader reader)
     {
-        while (true)
+        while (state != Helper.State.End && state != Helper.State.Error && !endOfInputEvent.WaitOne(0))
         {
             receiveEvent.WaitOne();
-            if(state == Helper.State.End || state == Helper.State.Error || endOfInputEvent.WaitOne(0))
+            string? receivedMessage = null;
+            try
+            {
+                receivedMessage = reader.ReadLine();
+            }
+            catch (Exception)
             {
                 sendEvent.Set();
-                break;
+                continue;
             }
-            string? receivedMessage = reader.ReadLine();
+
             if (!string.IsNullOrEmpty(receivedMessage))
             {
                 if (receivedMessage.StartsWith("REPLY"))
@@ -386,7 +394,7 @@ public class TCPClient
                         writer.Write(message);
                         writer.Flush();
                         Thread.Sleep(300);
-                        if (!receivedReplyEvent.WaitOne(5000))
+                        if (!receivedReplyEvent.WaitOne(2500))
                         {
                             Console.Error.WriteLine("ERR: Timeout waiting for REPLY to JOIN message.");
                             continue;
@@ -433,9 +441,7 @@ public class TCPClient
                     state = Helper.State.End;
                     endOfInputEvent.Set();
                     receiveEvent.Set();
-                    Thread.Sleep(300);                   	
-                    //break;
-                    Environment.Exit(0);
+                    break;
                 }
             }
             else
