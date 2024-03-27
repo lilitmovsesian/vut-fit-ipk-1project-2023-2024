@@ -281,7 +281,7 @@ public class UDPClient
                             continue;
                         }
                         Thread.Sleep(300);
-                        if (!receivedReplyEvent.WaitOne(5000))
+                        if (!receivedReplyEvent.WaitOne(2500))
                         {
                             Console.Error.WriteLine("ERR: Timeout waiting for REPLY to JOIN message.");
                             continue;
@@ -326,13 +326,11 @@ public class UDPClient
                 }
                 else
                 {
-                    endOfInputEvent.Set();
                     ByeSendAndConfirm(UDPSocket, sendEndPoint, ref messageID, serverIpAddress);
                     state = Helper.State.End;
                     receiveEvent.Set();
-                    Thread.Sleep(300);
-                    //break;
-                    Environment.Exit(0);
+                    endOfInputEvent.Set();
+                    break; ;
                 }
             }
             else
@@ -356,8 +354,16 @@ public class UDPClient
             byte[] receivedMessage = new byte[1024];
             int receivedBytes = 0;
             EndPoint receiveEndPoint = new IPEndPoint(IPAddress.Any, 0);
-
-            receivedBytes = UDPSocket.ReceiveFrom(receivedMessage, 0, receivedMessage.Length, SocketFlags.None, ref receiveEndPoint);
+            try
+            {
+                UDPSocket.ReceiveTimeout = 250;
+                receivedBytes = UDPSocket.ReceiveFrom(receivedMessage, 0, receivedMessage.Length, SocketFlags.None, ref receiveEndPoint);
+            }
+            catch (Exception)
+            {
+                sendEvent.Set();
+                continue;
+            }
             if (receivedBytes > 0)
             {
                 helper.SendConfirm(receivedMessage, UDPSocket, sendEndPoint);
