@@ -1,0 +1,2 @@
+Success: Authentication successful.
+Server: igufet joined discord.general.

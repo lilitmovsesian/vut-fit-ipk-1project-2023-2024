@@ -10,32 +10,35 @@ using System.Threading.Tasks;
 
 public class TCPClient
 {
-    private readonly IPAddress serverIpAddress;
-    private readonly ushort serverPort;
-    private readonly ushort UDPConfTimeout;
-    private readonly byte maxUDPRetr;
+    private readonly IPAddress _serverIpAddress;
+    private readonly ushort _serverPort;
+    private readonly ushort _UDPConfTimeout;
+    private readonly byte _maxUDPRetr;
 
-    Helper.State state = Helper.State.Start;
-    bool sendBYE = false;
-    bool sendERR = false;
-    string displayName = "";
-    bool receivedERR = false;
-    bool receievedBYE = false;
-    private ManualResetEvent sendEvent = new ManualResetEvent(false);
-    private ManualResetEvent receiveEvent = new ManualResetEvent(false);
-    private ManualResetEvent endOfInputEvent = new ManualResetEvent(false);
-    private ManualResetEvent receivedReplyEvent = new ManualResetEvent(false);
+    private Helper.State _state = Helper.State.Start;
+    private string _displayName = "";
 
-    Helper helper = new Helper();
+    private bool _sendBYE = false;
+    private bool _sendERR = false;
+    private bool _receivedERR = false;
+    private bool _receievedBYE = false;
+
+    private ManualResetEvent _sendEvent = new ManualResetEvent(false);
+    private ManualResetEvent _receiveEvent = new ManualResetEvent(false);
+    private ManualResetEvent _endOfInputEvent = new ManualResetEvent(false);
+    private ManualResetEvent _receivedReplyEvent = new ManualResetEvent(false);
+    private ManualResetEvent _ctrlCEvent = new ManualResetEvent(false);
+    private ManualResetEvent _threadsTerminatedEvent = new ManualResetEvent(false);
+
+    private Helper _helper = new Helper();
 
     public TCPClient(IPAddress serverIpAddress, ushort serverPort, ushort UDPConfTimeout, byte maxUDPRetr)
     {
-        this.serverIpAddress = serverIpAddress;
-        this.serverPort = serverPort;
-        this.UDPConfTimeout = UDPConfTimeout;
-        this.maxUDPRetr = maxUDPRetr;
+        this._serverIpAddress = serverIpAddress;
+        this._serverPort = serverPort;
+        this._UDPConfTimeout = UDPConfTimeout;
+        this._maxUDPRetr = maxUDPRetr;
     }
-
 
     public void Connect()
     {
@@ -45,8 +48,8 @@ public class TCPClient
         StreamReader? reader = null;
         try
         {
-            TCPSocket = new Socket(serverIpAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            IPEndPoint TCPEndPoint = new IPEndPoint(serverIpAddress, serverPort);
+            TCPSocket = new Socket(_serverIpAddress.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            IPEndPoint TCPEndPoint = new IPEndPoint(_serverIpAddress, _serverPort);
             TCPSocket.Connect(TCPEndPoint);
             stream = new NetworkStream(TCPSocket);
 
@@ -56,11 +59,10 @@ public class TCPClient
             connection to the server is OK, in udp the confirm messages are responsible for this*/
             TCPSocket.ReceiveTimeout = 2500;
             bool authSent = false;
-            helper.SetupCtrlCHandlerTCP(writer);
+            SetupCtrlCHandlerTCP(writer);
             while (true)
             {
-
-                if (state == Helper.State.Start)
+                if (_state == Helper.State.Start)
                 {
 
                     string? input = null;
@@ -68,23 +70,23 @@ public class TCPClient
 
                     if (input != null)
                     {
-                        if (helper.IsValidCommand(input))
+                        if (_helper.IsValidCommand(input))
                         {
                             if (input.StartsWith("/auth"))
                             {
                                 string[] parts = input.Split(' ');
-                                if (!helper.IsValidAuth(parts))
+                                if (!_helper.IsValidAuth(parts))
                                 {
                                     continue;
                                 }
                                 string username = parts[1];
                                 string secret = parts[2];
-                                displayName = parts[3];
-                                string message = string.Format("AUTH {0} AS {1} USING {2}\r\n", username.Trim(), displayName.Trim(), secret.Trim());
+                                _displayName = parts[3];
+                                string message = string.Format("AUTH {0} AS {1} USING {2}\r\n", username.Trim(), _displayName.Trim(), secret.Trim());
                                 writer.Write(message);
                                 writer.Flush();
                                 authSent = true;
-                                state = Helper.State.Auth;
+                                _state = Helper.State.Auth;
                             }
                             else if (input.StartsWith("/help"))
                             {
@@ -107,11 +109,11 @@ public class TCPClient
                     {
                         writer.Write("BYE\r\n");
                         writer.Flush();
-                        state = Helper.State.End;
+                        _state = Helper.State.End;
 
                     }
                 }
-                if (state == Helper.State.Auth)
+                if (_state == Helper.State.Auth)
                 {
 
                     if (!authSent)
@@ -120,19 +122,19 @@ public class TCPClient
                         input = Console.ReadLine();
                         if (input != null)
                         {
-                            if (helper.IsValidCommand(input))
+                            if (_helper.IsValidCommand(input))
                             {
                                 if (input.StartsWith("/auth"))
                                 {
                                     string[] parts = input.Split(' ');
-                                    if (!helper.IsValidAuth(parts))
+                                    if (!_helper.IsValidAuth(parts))
                                     {
                                         continue;
                                     }
                                     string username = parts[1];
                                     string secret = parts[2];
-                                    displayName = parts[3];
-                                    string message = string.Format("AUTH {0} AS {1} USING {2}\r\n", username.Trim(), displayName.Trim(), secret.Trim());
+                                    _displayName = parts[3];
+                                    string message = string.Format("AUTH {0} AS {1} USING {2}\r\n", username.Trim(), _displayName.Trim(), secret.Trim());
                                     writer.Write(message);
                                     writer.Flush();
                                     authSent = true;
@@ -158,14 +160,14 @@ public class TCPClient
                         {
                             writer.Write("BYE\r\n");
                             writer.Flush();
-                            state = Helper.State.End;
+                            _state = Helper.State.End;
                             break;
                         }
                     }
                     string? receivedMessage = reader.ReadLine();
                     if (!string.IsNullOrEmpty(receivedMessage))
                     {
-                        if (receivedMessage.StartsWith("REPLY"))
+                        if (receivedMessage.ToUpper().StartsWith("REPLY"))
                         {
                             string[] parts = receivedMessage.Split(' ');
                             int isIndex = Array.IndexOf(parts, "IS");
@@ -178,7 +180,7 @@ public class TCPClient
                             if (parts[1] == "OK")
                             {
                                 Console.Error.WriteLine("Success: " + reason);
-                                state = Helper.State.Open;
+                                _state = Helper.State.Open;
                                 continue;
                             }
                             else if (parts[1] == "NOK")
@@ -188,7 +190,7 @@ public class TCPClient
                                 continue;
                             }
                         }
-                        else if (receivedMessage.StartsWith("ERR"))
+                        else if (receivedMessage.ToUpper().StartsWith("ERR"))
                         {
                             string[] parts = receivedMessage.Split(' ');
                             int isIndex = Array.IndexOf(parts, "IS");
@@ -201,26 +203,26 @@ public class TCPClient
                             Console.Error.WriteLine("ERR FROM " + receivedDisplayName + ": " + messageContent);
                             writer.Write("BYE\r\n");
                             writer.Flush();
-                            state = Helper.State.End;
+                            _state = Helper.State.End;
                         }
                         else
                         {
-                            state = Helper.State.Error;
+                            _state = Helper.State.Error;
                         }
                     }
                     else
                     {
                         writer.Write("BYE\r\n");
                         writer.Flush();
-                        state = Helper.State.End;
+                        _state = Helper.State.End;
                     }
                 }
-                if (state == Helper.State.Open)
+                if (_state == Helper.State.Open)
                 {
-                    sendEvent.Reset();
-                    receiveEvent.Reset();
-                    receivedReplyEvent.Reset();
-                    endOfInputEvent.Reset();
+                    _sendEvent.Reset();
+                    _receiveEvent.Reset();
+                    _receivedReplyEvent.Reset();
+                    _endOfInputEvent.Reset();
                     TCPSocket.ReceiveTimeout = 250;
 
                     Thread sendThread = new Thread(() => SendMessageTCP(writer));
@@ -230,32 +232,33 @@ public class TCPClient
 
                     sendThread.Join();
                     receiveThread.Join();
+                    _threadsTerminatedEvent.Set();
 
-                    if (sendBYE == true)
+                    if (_sendBYE == true)
                     {
                         writer.Write("BYE\r\n");
                         writer.Flush();
-                        sendBYE = false;
-                        state = Helper.State.End;
+                        _sendBYE = false;
+                        _state = Helper.State.End;
                         break;
                     }
-                    if (sendERR == true)
+                    if (_sendERR == true)
                     {
-                        string message = string.Format("ERR FROM {0} IS Incoming message from {1}:{2} failed to be parsed.\r\n", displayName, serverIpAddress, serverPort);
+                        string message = string.Format("ERR FROM {0} IS Incoming message from {1}:{2} failed to be parsed.\r\n", _displayName, _serverIpAddress, _serverPort);
                         writer.Write(message);
                         writer.Flush();
-                        sendERR = false;
-                        state = Helper.State.Error;
+                        _sendERR = false;
+                        _state = Helper.State.Error;
                     }
                 }
-                if (state == Helper.State.Error)
+                if (_state == Helper.State.Error)
                 {
                     writer.Write("BYE\r\n");
                     writer.Flush();
-                    state = Helper.State.End;
+                    _state = Helper.State.End;
                     break;
                 }
-                if (state == Helper.State.End)
+                if (_state == Helper.State.End)
                 {
                     break;
                 }
@@ -281,9 +284,9 @@ public class TCPClient
 
     private void ReceiveMessageTCP(StreamReader reader)
     {
-        while (state != Helper.State.End && state != Helper.State.Error && !endOfInputEvent.WaitOne(0))
+        while (_state != Helper.State.End && _state != Helper.State.Error && !_endOfInputEvent.WaitOne(0) && !_ctrlCEvent.WaitOne(0))
         {
-            receiveEvent.WaitOne();
+            _receiveEvent.WaitOne();
             string? receivedMessage = null;
             try
             {
@@ -291,16 +294,16 @@ public class TCPClient
             }
             catch (Exception)
             {
-                sendEvent.Set();
+                _sendEvent.Set();
                 continue;
             }
 
             if (!string.IsNullOrEmpty(receivedMessage))
             {
-                if (receivedMessage.StartsWith("REPLY"))
+                if (receivedMessage.ToUpper().StartsWith("REPLY"))
                 {
                     string[] parts = receivedMessage.Split(' ');
-                    int isIndex = Array.IndexOf(parts, "IS");
+                    int isIndex = Array.FindIndex(parts, part => part.Equals("is", StringComparison.OrdinalIgnoreCase));
                     string? reason = null;
                     if (isIndex + 1 < parts.Length)
                     {
@@ -315,12 +318,12 @@ public class TCPClient
                     {
                         Console.Error.WriteLine("Failure: " + reason);
                     }
-                    receivedReplyEvent.Set();
+                    _receivedReplyEvent.Set();
                 }
-                else if (receivedMessage.StartsWith("MSG"))
+                else if (receivedMessage.ToUpper().StartsWith("MSG"))
                 {
                     string[] parts = receivedMessage.Split(' ');
-                    int isIndex = Array.IndexOf(parts, "IS");
+                    int isIndex = Array.FindIndex(parts, part => part.Equals("is", StringComparison.OrdinalIgnoreCase));
                     string receivedDisplayName = parts[2];
                     string? messageContent = null;
                     if (isIndex + 1 < parts.Length)
@@ -330,12 +333,12 @@ public class TCPClient
                     Console.WriteLine(receivedDisplayName + ": " + messageContent);
 
                 }
-                else if (receivedMessage.StartsWith("ERR"))
+                else if (receivedMessage.ToUpper().StartsWith("ERR"))
                 {
-                    sendBYE = true;
-                    receivedERR = true;
+                    _sendBYE = true;
+                    _receivedERR = true;
                     string[] parts = receivedMessage.Split(' ');
-                    int isIndex = Array.IndexOf(parts, "IS");
+                    int isIndex = Array.FindIndex(parts, part => part.Equals("is", StringComparison.OrdinalIgnoreCase));
                     string receivedDisplayName = parts[2];
                     string? messageContent = null;
                     if (isIndex + 1 < parts.Length)
@@ -343,39 +346,39 @@ public class TCPClient
                         messageContent = string.Join(" ", parts, isIndex + 1, parts.Length - isIndex - 1);
                     }
                     Console.Error.WriteLine("ERR FROM " + receivedDisplayName + ": " + messageContent);
-                    sendEvent.Set();
+                    _sendEvent.Set();
                     break;
                 }
-                else if (receivedMessage.StartsWith("BYE"))
+                else if (receivedMessage.ToUpper().StartsWith("BYE"))
                 {
-                    receievedBYE = true;
-                    state = Helper.State.End;
-                    sendEvent.Set();
+                    _receievedBYE = true;
+                    _state = Helper.State.End;
+                    _sendEvent.Set();
                     break;
                 }
                 else
                 {
-                    receivedERR = true;
-                    sendERR = true;
-                    sendEvent.Set();
+                    _receivedERR = true;
+                    _sendERR = true;
+                    _sendEvent.Set();
                     break;
                 }
             }
-            sendEvent.Set();
+            _sendEvent.Set();
         }
     }
     private void SendMessageTCP(StreamWriter writer)
     {
-        while (!receivedERR && !receievedBYE && !sendBYE && !sendERR)
+        while (!_receivedERR && !_receievedBYE && !_sendBYE && !_sendERR && !_ctrlCEvent.WaitOne(0))
         {
-            receiveEvent.Set();
-            sendEvent.WaitOne();
-            if (state == Helper.State.End)
+            _receiveEvent.Set();
+            _sendEvent.WaitOne();
+            if (_state == Helper.State.End)
             {
-                receiveEvent.Set();
+                _receiveEvent.Set();
                 break;
             }
-            if (helper.CheckKey())
+            if (_helper.CheckKey())
             {
                 string? input = Console.ReadLine();
                 if (input != null)
@@ -390,11 +393,10 @@ public class TCPClient
                             continue;
                         }
                         string channelId = parts[1];
-                        string message = string.Format("JOIN {0} AS {1}\r\n", channelId.Trim(), displayName.Trim());
+                        string message = string.Format("JOIN {0} AS {1}\r\n", channelId.Trim(), _displayName.Trim());
                         writer.Write(message);
                         writer.Flush();
-                        Thread.Sleep(300);
-                        if (!receivedReplyEvent.WaitOne(2500))
+                        if (!_receivedReplyEvent.WaitOne(2500))
                         {
                             Console.Error.WriteLine("ERR: Timeout waiting for REPLY to JOIN message.");
                             continue;
@@ -408,7 +410,7 @@ public class TCPClient
                             Console.Error.WriteLine("ERR: Use /rename {DisplayName}.");
                             continue;
                         }
-                        displayName = parts[1];
+                        _displayName = parts[1];
 
                     }
                     else if (input.StartsWith("/help"))
@@ -428,19 +430,18 @@ public class TCPClient
                             continue;
                         }
                         string messageContent = input;
-                        string message = string.Format("MSG FROM {0} IS {1}\r\n", displayName.Trim(), messageContent);
+                        string message = string.Format("MSG FROM {0} IS {1}\r\n", _displayName.Trim(), messageContent);
                         writer.Write(message);
                         writer.Flush();
-                        Thread.Sleep(300);
                     }
                 }
                 else
                 {
                     writer.Write("BYE\r\n");
                     writer.Flush();
-                    state = Helper.State.End;
-                    endOfInputEvent.Set();
-                    receiveEvent.Set();
+                    _state = Helper.State.End;
+                    _endOfInputEvent.Set();
+                    _receiveEvent.Set();
                     break;
                 }
             }
@@ -449,5 +450,19 @@ public class TCPClient
                 Thread.Sleep(100);
             }
         }
+    }
+
+    private void SetupCtrlCHandlerTCP(StreamWriter writer)
+    {
+        _ctrlCEvent.Reset();
+        _threadsTerminatedEvent.Reset();
+        Console.CancelKeyPress += (sender, e) =>
+        {
+            e.Cancel = true;
+            writer.Write("BYE\r\n");
+            writer.Flush();
+            _threadsTerminatedEvent.WaitOne(1000);
+            Environment.Exit(0);
+        };
     }
 }

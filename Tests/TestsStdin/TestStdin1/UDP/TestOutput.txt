@@ -1,0 +1,13 @@
+Supported local commands:
+    /auth {Username} {Secret} {DisplayName}   Sends AUTH message with the provided data to the server, 
+                                              sets the DisplayName.
+    
+    /join {ChannelID}                         Sends JOIN message with channel name from the command to the server.
+    
+    /rename {DisplayName}                     Locally changes the display name of the user.
+    
+    /help                                     Prints the local commands help message.
+Success: Authentication successful.
+Server: igufet joined discord.general.
+Server: igufet joined discord.verified-1.
+Success: Channel discord.verified-1 successfully joined.

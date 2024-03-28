@@ -1,0 +1,1 @@
+ERR: /auth command is required. Use /auth {Username} {Secret} {DisplayName}.

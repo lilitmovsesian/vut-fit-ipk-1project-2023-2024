@@ -1,0 +1,3 @@
+Success: Authentication successful.
+Server: igufet joined discord.general.
+ERR: Enter non-empty input.

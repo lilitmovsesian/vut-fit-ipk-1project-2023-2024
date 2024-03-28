@@ -10,29 +10,29 @@ using System.Threading.Tasks;
 
 public class Client
 {
-    private readonly IPAddress serverIpAddress;
-    private readonly ushort serverPort;
-    private readonly ushort UDPConfTimeout;
-    private readonly byte maxUDPRetr;
+    private readonly IPAddress _serverIpAddress;
+    private readonly ushort _serverPort;
+    private readonly ushort _UDPConfTimeout;
+    private readonly byte _maxUDPRetr;
 
 
     public Client(IPAddress serverIpAddress, ushort serverPort, ushort UDPConfTimeout, byte maxUDPRetr)
     {
-        this.serverIpAddress = serverIpAddress;
-        this.serverPort = serverPort;
-        this.UDPConfTimeout = UDPConfTimeout;
-        this.maxUDPRetr = maxUDPRetr;
+        this._serverIpAddress = serverIpAddress;
+        this._serverPort = serverPort;
+        this._UDPConfTimeout = UDPConfTimeout;
+        this._maxUDPRetr = maxUDPRetr;
     }
 
     public void ConnectUDP()
     {
-        UDPClient udpClient = new UDPClient(serverIpAddress, serverPort, UDPConfTimeout, maxUDPRetr);
+        UDPClient udpClient = new UDPClient(_serverIpAddress, _serverPort, _UDPConfTimeout, _maxUDPRetr);
         udpClient.Connect();
     }
 
     public void ConnectTCP()
     {
-        TCPClient tcpClient = new TCPClient(serverIpAddress, serverPort, UDPConfTimeout, maxUDPRetr);
+        TCPClient tcpClient = new TCPClient(_serverIpAddress, _serverPort, _UDPConfTimeout, _maxUDPRetr);
         tcpClient.Connect();
     }
 }

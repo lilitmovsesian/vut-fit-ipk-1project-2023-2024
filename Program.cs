@@ -14,9 +14,6 @@ using static System.Net.WebRequestMethods;
 using System.ComponentModel.Design;
 using System.Runtime.Intrinsics.Arm;
 
-// dotnet run -s anton5.fit.vutbr.cz -t tcp
-// /auth xmovse00 919e1266-e441-4df6-9149-f46c12376bb6 igufet
-
 class Program
 {
     public static void PrintUserHelp()
@@ -29,7 +26,7 @@ class Program
     
     /rename {DisplayName}                     Locally changes the display name of the user.
     
-    /help                                     Prints this message.");
+    /help                                     Prints the local commands help message.");
     }
 
     static void PrintHelp()
@@ -53,7 +50,7 @@ Command Line Interface Arguments:
     -p <uint16>         Server port number. Dafault is 4567.
     -d <uint16>         UDP confirmation timeout in milliseconds. Default is 250.
     -r <uint8>          Maximum number of UDP retransmissions. Default is 3.
-    -h                  Prints this help message and exits.
+    -h                  Prints this help message.
 ");
         PrintUserHelp();
     }
@@ -89,15 +86,40 @@ Command Line Interface Arguments:
                 }
                 else if (args[i] == "-p" || args[i] == "--protocol")
                 {
-                    serverPort = ushort.Parse(args[i + 1]);
+                    if (ushort.TryParse(args[i + 1], out ushort parsedValue))
+                    {
+                        serverPort = parsedValue;
+                    }
+                    else
+                    {
+                        Console.Error.WriteLine("ERR: Invalid value for -p. Please provide a valid UInt16 value.");
+                        Environment.Exit(1);
+                    }
                 }
                 else if (args[i] == "-d")
                 {
-                    UDPConfTimeout = ushort.Parse(args[i + 1]);
+                    if (ushort.TryParse(args[i + 1], out ushort parsedValue))
+                    {
+                        UDPConfTimeout = parsedValue;
+                    }
+                    else
+                    {
+                        Console.Error.WriteLine("ERR: Invalid value for -d. Please provide a valid UInt16 value.");
+                        Environment.Exit(1);
+                    }
                 }
                 else if (args[i] == "-r")
                 {
-                    maxUDPRetr = byte.Parse(args[i + 1]);
+                    if (byte.TryParse(args[i + 1], out byte parsedValue))
+                    {
+                        maxUDPRetr = parsedValue;
+                    }
+                    else
+                    {
+                        Console.Error.WriteLine("ERR: Invalid value for -r. Please provide a valid UInt8 value.");
+                        Environment.Exit(1);
+                    }
+
                 }
                 else if (args[i] == "-h")
                 {
