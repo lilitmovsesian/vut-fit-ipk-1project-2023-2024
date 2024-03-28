@@ -61,3 +61,4 @@ The client was tested on the provided reference Linux `IPK24` VM against the ref
 Moreover, additional input cases, which are located in the `Tests/TestsStdin` folder, were tested. Since the behavior with more complex input data may change due to the messages received from the server and creating a test script containing several of these input tests would overload the server, I have tested it using individual `test.sh` scripts without output comparison and manually. The screenshots of running each of these test cases alongside Wireshark captures screenshots and text output data (not taken at the same time as the screenshots) are located in the same folder. The text output of tests includes both standard error and standard output redirected.
 
 ### References
+[1]: Dolejška, Daniel. IPK-Projects-2024. https://git.fit.vutbr.cz/NESFIT/IPK-Projects-2024/src/branch/master
