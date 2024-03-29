@@ -27,7 +27,6 @@ public class TCPClient
     private ManualResetEvent _receivedReplyEvent = new ManualResetEvent(false);
     private ManualResetEvent _ctrlCEvent = new ManualResetEvent(false);
     private ManualResetEvent _threadsTerminatedEvent = new ManualResetEvent(false);
-    private ManualResetEvent _receiveThreadPausedEvent = new ManualResetEvent(false);
 
     private Helper _helper = new Helper();
 
@@ -284,7 +283,6 @@ public class TCPClient
         while (_state != Helper.State.End && _state != Helper.State.Error && !_endOfInputEvent.WaitOne(0) && !_ctrlCEvent.WaitOne(0))
         {
             _receiveEvent.WaitOne();
-            _receiveThreadPausedEvent.Reset();
             string? receivedMessage = null;
             try
             {
@@ -345,7 +343,6 @@ public class TCPClient
                     }
                     Console.Error.WriteLine("ERR FROM " + receivedDisplayName + ": " + messageContent);
                     _sendEvent.Set();
-                    _receiveThreadPausedEvent.Set();
                     break;
                 }
                 else if (receivedMessage.ToUpper().StartsWith("BYE"))
@@ -353,7 +350,6 @@ public class TCPClient
                     _receievedBYE = true;
                     _state = Helper.State.End;
                     _sendEvent.Set();
-                    _receiveThreadPausedEvent.Set();
                     break;
                 }
                 else
@@ -361,12 +357,10 @@ public class TCPClient
                     _receivedERR = true;
                     _sendERR = true;
                     _sendEvent.Set();
-                    _receiveThreadPausedEvent.Set();
                     break;
                 }
             }
             _sendEvent.Set();
-            _receiveThreadPausedEvent.Set();
         }
     }
     private void SendMessageTCP(StreamWriter writer)
@@ -375,7 +369,6 @@ public class TCPClient
         {
             _receiveEvent.Set();
             _sendEvent.WaitOne();
-            _receiveThreadPausedEvent.WaitOne();
             if (_state == Helper.State.End)
             {
                 _receiveEvent.Set();
@@ -399,6 +392,7 @@ public class TCPClient
                         string message = string.Format("JOIN {0} AS {1}\r\n", channelId.Trim(), _displayName.Trim());
                         writer.Write(message);
                         writer.Flush();
+                        Thread.Sleep(100);
                         if (!_receivedReplyEvent.WaitOne(2500))
                         {
                             Console.Error.WriteLine("ERR: Timeout waiting for REPLY to JOIN message.");
@@ -436,12 +430,14 @@ public class TCPClient
                         string message = string.Format("MSG FROM {0} IS {1}\r\n", _displayName.Trim(), messageContent);
                         writer.Write(message);
                         writer.Flush();
+                        Thread.Sleep(100);
                     }
                 }
                 else
                 {
                     writer.Write("BYE\r\n");
                     writer.Flush();
+                    Thread.Sleep(100);
                     _state = Helper.State.End;
                     _endOfInputEvent.Set();
                     _receiveEvent.Set();
