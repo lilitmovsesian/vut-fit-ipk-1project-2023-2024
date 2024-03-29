@@ -141,16 +141,15 @@ Command Line Interface Arguments:
             serverIpAddress = address[0];
         }
 
-
-        Client client = new Client(serverIpAddress, serverPort, UDPConfTimeout, maxUDPRetr);
-
         if (transportProtocol == "udp")
         {
-            client.ConnectUDP();
+            UDPClient udpClient = new UDPClient(serverIpAddress, serverPort, UDPConfTimeout, maxUDPRetr);
+            udpClient.Connect();
         }
         else if (transportProtocol == "tcp")
         {
-            client.ConnectTCP();
+            TCPClient tcpClient = new TCPClient(serverIpAddress, serverPort);
+            tcpClient.Connect();
         }
         else
         {

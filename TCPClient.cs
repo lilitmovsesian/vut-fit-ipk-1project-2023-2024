@@ -12,8 +12,6 @@ public class TCPClient
 {
     private readonly IPAddress _serverIpAddress;
     private readonly ushort _serverPort;
-    private readonly ushort _UDPConfTimeout;
-    private readonly byte _maxUDPRetr;
 
     private Helper.State _state = Helper.State.Start;
     private string _displayName = "";
@@ -29,15 +27,14 @@ public class TCPClient
     private ManualResetEvent _receivedReplyEvent = new ManualResetEvent(false);
     private ManualResetEvent _ctrlCEvent = new ManualResetEvent(false);
     private ManualResetEvent _threadsTerminatedEvent = new ManualResetEvent(false);
+    private ManualResetEvent _receiveThreadPausedEvent = new ManualResetEvent(false);
 
     private Helper _helper = new Helper();
 
-    public TCPClient(IPAddress serverIpAddress, ushort serverPort, ushort UDPConfTimeout, byte maxUDPRetr)
+    public TCPClient(IPAddress serverIpAddress, ushort serverPort)
     {
         this._serverIpAddress = serverIpAddress;
         this._serverPort = serverPort;
-        this._UDPConfTimeout = UDPConfTimeout;
-        this._maxUDPRetr = maxUDPRetr;
     }
 
     public void Connect()
@@ -287,6 +284,7 @@ public class TCPClient
         while (_state != Helper.State.End && _state != Helper.State.Error && !_endOfInputEvent.WaitOne(0) && !_ctrlCEvent.WaitOne(0))
         {
             _receiveEvent.WaitOne();
+            _receiveThreadPausedEvent.Reset();
             string? receivedMessage = null;
             try
             {
@@ -347,6 +345,7 @@ public class TCPClient
                     }
                     Console.Error.WriteLine("ERR FROM " + receivedDisplayName + ": " + messageContent);
                     _sendEvent.Set();
+                    _receiveThreadPausedEvent.Set();
                     break;
                 }
                 else if (receivedMessage.ToUpper().StartsWith("BYE"))
@@ -354,6 +353,7 @@ public class TCPClient
                     _receievedBYE = true;
                     _state = Helper.State.End;
                     _sendEvent.Set();
+                    _receiveThreadPausedEvent.Set();
                     break;
                 }
                 else
@@ -361,10 +361,12 @@ public class TCPClient
                     _receivedERR = true;
                     _sendERR = true;
                     _sendEvent.Set();
+                    _receiveThreadPausedEvent.Set();
                     break;
                 }
             }
             _sendEvent.Set();
+            _receiveThreadPausedEvent.Set();
         }
     }
     private void SendMessageTCP(StreamWriter writer)
@@ -373,6 +375,7 @@ public class TCPClient
         {
             _receiveEvent.Set();
             _sendEvent.WaitOne();
+            _receiveThreadPausedEvent.WaitOne();
             if (_state == Helper.State.End)
             {
                 _receiveEvent.Set();

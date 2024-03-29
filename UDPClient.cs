@@ -284,7 +284,6 @@ public class UDPClient
                         string channelId = parts[1];
                         byte[] joinMessage = _helperUDP.ConstructMessage(Helper.MessageType.JOIN, messageID, channelId, _displayName);
                         _confirmReceivedEvent.Reset();
-                        _confirmWaitingEvent.Reset();
                         _confirmWaitingEvent.WaitOne();
                         if (!(SendAndConfirm(joinMessage, UDPSocket, sendEndPoint, ref messageID)))
                         {
@@ -326,7 +325,6 @@ public class UDPClient
                         string messageContent = input;
                         byte[] message = _helperUDP.ConstructMessage(Helper.MessageType.MSG, messageID, _displayName, messageContent);
                         _confirmReceivedEvent.Reset();
-                        _confirmWaitingEvent.Reset();
                         _confirmWaitingEvent.WaitOne();
                         if (!(SendAndConfirm(message, UDPSocket, sendEndPoint, ref messageID)))
                         {
@@ -338,7 +336,6 @@ public class UDPClient
                 else
                 {
                     _confirmReceivedEvent.Reset();
-                    _confirmWaitingEvent.Reset();
                     _confirmWaitingEvent.WaitOne();
                     ByeSendAndConfirm(UDPSocket, sendEndPoint, ref messageID);
                     _state = Helper.State.End;
@@ -360,6 +357,7 @@ public class UDPClient
         {
             _receiveEvent.WaitOne();
             _confirmReceivedEvent.WaitOne();
+            _confirmWaitingEvent.Reset();
             if (_state == Helper.State.End || _state == Helper.State.Error || _endOfInputEvent.WaitOne(0))
             {
                 _sendEvent.Set();
