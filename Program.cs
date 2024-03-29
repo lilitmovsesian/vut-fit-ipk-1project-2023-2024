@@ -65,12 +65,14 @@ Command Line Interface Arguments:
 
         IPAddress? serverIpAddress = null;
 
+        /*Prints help message and exits.*/
         if (args.Length == 1 && args[0] == "-h")
         {
             PrintHelp();
             Environment.Exit(0);
         }
-
+        /*Arguments parsing with the validation of ushort and byte value. In case of the error, 
+         * the error message is printed and program exits.*/
         for (int i = 0; i < args.Length; i++)
         {
             if (args[i].StartsWith("-"))
@@ -134,13 +136,13 @@ Command Line Interface Arguments:
             Console.Error.WriteLine("ERR: Invalid program parameters, transport protocol and server IP address or hostname can't be null.");
             Environment.Exit(1);
         }
-
+        /*Tries to parse ip address, if it fails gets IP address via DNS.*/
         if (!IPAddress.TryParse(hostnameOrIpAddress, out serverIpAddress))
         {
             IPAddress[] address = Dns.GetHostAddresses(hostnameOrIpAddress);
             serverIpAddress = address[0];
         }
-
+        /*Creates an instance of a class and invokes a method of corresponding class.*/
         if (transportProtocol == "udp")
         {
             UDPClient udpClient = new UDPClient(serverIpAddress, serverPort, UDPConfTimeout, maxUDPRetr);

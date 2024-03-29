@@ -7,17 +7,21 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using static Helper;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
-
+/*Helper class for the utility functions for UDP.*/
 public class HelperUDP
 {
+    /* Prints received reply message from the byte array containing the received reply message. */
     public bool PrintReceivedReply(byte[] replyMessage, ref ushort messageID)
     {
         bool success = false;
         ushort replyRefID = (ushort)((replyMessage[4] << 8) | replyMessage[5]);
 
-        if (replyRefID == (messageID - 1)) //before the last incremenentation of messageID there was an ID of recieved auth message)
+        /* Before the last incremenentation of messageID there was an ID of recieved auth message.*/
+        if (replyRefID == (messageID - 1)) 
         {
+            /* Extracts reason from the reply message. */
             int reasonStartIndex = 6;
             int reasonEndIndex = Array.IndexOf(replyMessage, (byte)0, reasonStartIndex);
             string reason = Encoding.UTF8.GetString(replyMessage, reasonStartIndex, reasonEndIndex - reasonStartIndex);
@@ -41,12 +45,15 @@ public class HelperUDP
         return success;
     }
 
+    /* Prints received ERR or MSG message from the byte array containing the received message. */
     public void PrintReceivedErrorOrMessage(byte[] receivedMessage)
     {
+        /* Extracts display name from the message. */
         int disNameStartIndex = 3;
         int disNameEndIndex = Array.IndexOf(receivedMessage, (byte)0, disNameStartIndex);
         string receivedDisplayName = Encoding.UTF8.GetString(receivedMessage, disNameStartIndex, disNameEndIndex - disNameStartIndex);
 
+        /* Extracts message content from the message. */
         int mesContentStartIndex = disNameEndIndex + 1;
         int mesContentEndIndex = Array.IndexOf(receivedMessage, (byte)0, mesContentStartIndex);
         string messageContent = Encoding.UTF8.GetString(receivedMessage, mesContentStartIndex, mesContentEndIndex - mesContentStartIndex);
@@ -61,15 +68,17 @@ public class HelperUDP
         }
     }
 
-    public void SendConfirm(byte[] replyMessage, Socket UDPSocket, IPEndPoint sendEndPoint)
+    /* Sends a confirmation with the recieved ID. */
+    public void SendConfirm(byte[] receivedMessage, Socket UDPSocket, IPEndPoint sendEndPoint)
     {
         byte[] clientConfirm = new byte[3];
         clientConfirm[0] = (byte)MessageType.CONFIRM;
-        clientConfirm[1] = replyMessage[1];
-        clientConfirm[2] = replyMessage[2];
+        clientConfirm[1] = receivedMessage[1];
+        clientConfirm[2] = receivedMessage[2];
         UDPSocket.SendTo(clientConfirm, 0, clientConfirm.Length, SocketFlags.None, sendEndPoint);
     }
 
+    /* Constructs byte arrays for several types of messages with use of params string[]. */
     public byte[] ConstructMessage(MessageType messageType, ushort messageID, params string[] fields)
     {
         string temp = ((char)messageType).ToString() + ((char)(messageID >> 8)).ToString() + ((char)messageID).ToString() + (string.Join("\0", fields) + "\0");

@@ -7,9 +7,10 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-
+/*Helper class for the utility functions.*/
 public class Helper
 {
+    /*Enum defining message types.*/
     public enum MessageType : byte
     {
         CONFIRM = 0x00,
@@ -21,6 +22,7 @@ public class Helper
         BYE = 0xFF
     }
 
+    /*Enum defining states.*/
     public enum State
     {
         Start,
@@ -30,6 +32,7 @@ public class Helper
         End
     };
 
+    /* Validates the /auth command format. The display name, secret and username is validated using regexes.*/
     public bool IsValidAuth(string[] parts)
     {
         if (parts.Length < 4)
@@ -56,7 +59,8 @@ public class Helper
     }
 
     /* A function which i use in both protocols in waiting for input by the send message thread.
-In case of non redirected standard input, the program can be blocked waiting for input in some cases which i tested.*/
+     * In case of non redirected standard input, the program can be blocked waiting for input
+     * in some cases which i tested.*/
     public bool CheckKey()
     {
         if (!Console.IsInputRedirected)
@@ -70,6 +74,8 @@ In case of non redirected standard input, the program can be blocked waiting for
         return true;
     }
 
+
+    /*Checks if a command is valid comparing it with a regex pattern, returns boolean.*/
     public bool IsValidCommand(string input)
     {
         string[] parts = input.Split(' ');
