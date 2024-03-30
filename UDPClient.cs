@@ -56,6 +56,7 @@ public class UDPClient
 
     public void Connect()
     {
+        Socket? UDPSocket = null;
         try
         {
             /* Creates an UDP socket. */
@@ -86,6 +87,7 @@ public class UDPClient
                 {
                     _threadsTerminatedEvent.WaitOne();
                 }
+                UDPSocket.Close();
                 Environment.Exit(0);
             };
 
@@ -292,7 +294,8 @@ public class UDPClient
         }
         catch (Exception)
         {
-            Console.Error.WriteLine("ERR: Error connecting to the server.");
+            if (UDPSocket != null)
+                UDPSocket.Close();
         }
     }
 

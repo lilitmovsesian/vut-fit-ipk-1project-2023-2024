@@ -62,8 +62,28 @@ public class TCPClient
             writer = new StreamWriter(stream);
             reader = new StreamReader(stream);
             bool authSent = false;
-            /* Invokes a method for cancel events handling. */
-            SetupCtrlCHandlerTCP(writer);
+
+            /* Handles Ctrl+C and Ctrl+D event. If cancel key is pressed, a semaphore _ctrlCEvent is set.
+            Bye message is sent. If the current state is Open state, the handler waits for both 
+            threads to terminate and exits the program. */
+            _ctrlCEvent.Reset();
+            _threadsTerminatedEvent.Reset();
+            Console.CancelKeyPress += (sender, e) =>
+            {
+                e.Cancel = true;
+                _ctrlCEvent.Set();
+                writer.Write("BYE\r\n");
+                writer.Flush();
+                if (_state == Helper.State.Open)
+                {
+                    _threadsTerminatedEvent.WaitOne();
+                }
+                TCPSocket.Close();
+                stream.Close();
+                writer.Close();
+                reader.Close();
+                Environment.Exit(0);
+            };
 
             /* Main loop for client operation. */
             while (true)
@@ -289,14 +309,9 @@ public class TCPClient
                     reader.Close();
                     break;
                 }
-
             }
         }
         catch (Exception)
-        {
-            Console.Error.WriteLine("ERR: Error connecting to the server.");
-        }
-        finally
         {
             if (TCPSocket != null)
                 TCPSocket.Close();
@@ -510,25 +525,4 @@ public class TCPClient
            }
        }
    }
-
-   /* Handles Ctrl+C and Ctrl+D event. If cancel key is pressed, a semaphore _ctrlCEvent is set.
-       Bye message is sent. If the current state is Open state, the handler waits for both 
-       threads to terminate and exits the program. */
-        private void SetupCtrlCHandlerTCP(StreamWriter writer)
-    {
-        _ctrlCEvent.Reset();
-        _threadsTerminatedEvent.Reset();
-        Console.CancelKeyPress += (sender, e) =>
-        {
-            e.Cancel = true;
-            _ctrlCEvent.Set();
-            writer.Write("BYE\r\n");
-            writer.Flush();
-            if (_state == Helper.State.Open)
-            {
-                _threadsTerminatedEvent.WaitOne();
-            }
-            Environment.Exit(0);
-        };
-    }
 }
