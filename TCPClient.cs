@@ -521,6 +521,7 @@ public class TCPClient
         Console.CancelKeyPress += (sender, e) =>
         {
             e.Cancel = true;
+            _ctrlCEvent.Set();
             writer.Write("BYE\r\n");
             writer.Flush();
             if (_state == Helper.State.Open)
