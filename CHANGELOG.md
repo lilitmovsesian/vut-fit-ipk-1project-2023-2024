@@ -2,6 +2,22 @@
 
 At present, I am not aware of any limitations or issues with the implemented application. All committed changes are listed below.
 
+https://git.fit.vutbr.cz/xmovse00/ipk24chat-client/commit/b91d66621bc5d5259e6e628ff1732a343e8461bc - Sun Mar 31 11:14:13 2024 : fix: fixed a fatal misprint in udp
+
+https://git.fit.vutbr.cz/xmovse00/ipk24chat-client/commit/f37e370b66e87d81087ef64a8bde747b475c760a - Sun Mar 31 00:59:51 2024 : fix: fixed minor issues
+
+https://git.fit.vutbr.cz/xmovse00/ipk24chat-client/commit/450f1f67734032672a254473a8223e9721bb0327 - Sun Mar 31 00:21:44 2024 : fix: fixed TCPClient
+
+https://git.fit.vutbr.cz/xmovse00/ipk24chat-client/commit/29a62e93a8037eaa6aba0980c74304c992177798 - Sat Mar 30 13:54:20 2024 : Update CHANGELOG.md
+
+https://git.fit.vutbr.cz/xmovse00/ipk24chat-client/commit/a76a4b4a09f2d96c15283bb6d505d1b3c0ce671b - Sat Mar 30 13:53:26 2024 : Update CHANGELOG.md
+
+https://git.fit.vutbr.cz/xmovse00/ipk24chat-client/commit/126b1eb8cfcfb39ef203246b89be621a66c898c4 - Sat Mar 30 13:52:37 2024 : fix: fixed changelog.md
+
+https://git.fit.vutbr.cz/xmovse00/ipk24chat-client/commit/74f66c0401ee4e96418ed74769dbd18a584e50ca - Sat Mar 30 13:39:35 2024 : fix: fixed newlines in changelog.md
+
+https://git.fit.vutbr.cz/xmovse00/ipk24chat-client/commit/6b26f75491b7ee898902432b26fa0f543ac5f6cc - Sat Mar 30 13:35:45 2024 : feat: changelog modified
+
 https://git.fit.vutbr.cz/xmovse00/ipk24chat-client/commit/b5cb505713a34ddd0ddaa42f449826f2c0584950 - Fri Mar 29 23:26:45 2024 : feat: Added comments.
 
 https://git.fit.vutbr.cz/xmovse00/ipk24chat-client/commit/4a65a65c409cb22b6c9e0431b87ba41d8ed9b20f - Fri Mar 29 14:56:13 2024 : fix: minor fixes
