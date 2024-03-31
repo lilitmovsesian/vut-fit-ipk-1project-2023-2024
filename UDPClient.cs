@@ -60,7 +60,7 @@ public class UDPClient
         try
         {
             /* Creates an UDP socket. */
-            Socket UDPSocket = new Socket(_serverIpAddress.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
+            UDPSocket = new Socket(_serverIpAddress.AddressFamily, SocketType.Dgram, ProtocolType.Udp);
             IPEndPoint sendEndPoint = new IPEndPoint(_serverIpAddress, _serverPort);
 
             bool authSent = false;
